@@ -1,17 +1,21 @@
 {
-  "name": "mock-server",
+  "name": "mock-external-server",
   "version": "1.0.0",
-  "type": "module",
+  "description": "Mock External Server untuk simulasi API Logistik dan Payment",
   "main": "mock-external-server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "mock:start": "node mock-external-server.js",
+    "mock:dev": "nodemon mock-external-server.js"
   },
-  "keywords": [],
+  "keywords": ["mock", "graphql", "apollo-server"],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "apollo-server": "^3.13.0",
-    "graphql": "^16.12.0"
+    "apollo-server": "^3.12.1",
+    "graphql": "^16.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   }
 }

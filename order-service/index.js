@@ -22,6 +22,7 @@ async function initDatabase() {
       payment_status TEXT,
       total_amount REAL NOT NULL,
       shipping_address TEXT,
+      pickup_address TEXT, -- KOLOM BARU
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -35,6 +36,7 @@ async function initDatabase() {
       product_name TEXT NOT NULL,
       quantity INTEGER NOT NULL,
       price_at_purchase REAL NOT NULL,
+      weight_per_item INTEGER NOT NULL, -- KOLOM BARU
       FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
     )
   `);
@@ -51,12 +53,14 @@ const typeDefs = gql`
     totalHarga: Float!
     status: String!
     alamatPengiriman: String
+    alamatPenjemputan: String
   }
 
   input CreateOrderInput {
     productId: String!
     quantity: Int!
     alamatPengiriman: String!
+    alamatPenjemputan: String!
   }
 
   type Query {
@@ -81,6 +85,7 @@ function mapDbToOrder(orderRow, orderItems) {
     totalHarga: orderRow.total_amount,
     status: orderRow.status,
     alamatPengiriman: orderRow.shipping_address,
+    alamatPenjemputan: orderRow.pickup_address,
   };
 }
 
@@ -119,17 +124,39 @@ const resolvers = {
   Mutation: {
     createOrder: async (_, { input }) => {
       try {
-        // Hardcode harga barang sementara (dalam production, ambil dari Product Service)
-        const hargaBarang = 10000;
-        
-        // Hitung harga barang total
-        const hargaBarangTotal = hargaBarang * input.quantity;
+        const productQuery = `
+          query {
+            getProduct(id: "${input.productId}") {
+              namaProduk
+              harga
+              berat
+            }
+          }
+        `;
+
+        const productResponse = await axios.post('http://localhost:4000/graphql', {
+            query: productQuery
+        });
+
+        const productData = productResponse.data.data.getProduct;
+
+        if (!productData) {
+          throw new Error('Produk tidak ditemukan atau Product Service mati');
+        }
+
+        const hargaAsli = productData.harga;
+        const beratAsli = productData.berat;
+        const namaAsli = productData.namaProduk;
+
+        // Hitung Total & Berat
+        const hargaBarangTotal = hargaAsli * input.quantity;
+        const totalBerat = beratAsli * input.quantity;
 
         // Cek Ongkir - Request ke Mock Server
         console.log('Menghubungi API Logistik untuk cek ongkir...');
         const ongkirQuery = `
           query {
-            cekOngkir(tujuan: "${input.alamatPengiriman}", berat: 1000)
+            cekOngkir(tujuan: "${input.alamatPengiriman}", berat: ${totalBerat})
           }
         `;
 
@@ -184,33 +211,23 @@ const resolvers = {
         // Insert ke tabel orders dulu untuk dapat ID
         return new Promise((resolve, reject) => {
           db.run(
-            `INSERT INTO orders (user_id, status, payment_status, total_amount, shipping_address)
-             VALUES (?, ?, ?, ?, ?)`,
-            [
-              1, // Hardcode user_id untuk sekarang (dalam production, ambil dari auth token)
-              'SUCCESS',
-              paymentStatus,
-              totalAmount,
-              input.alamatPengiriman,
-            ],
+            `INSERT INTO orders (user_id, status, payment_status, total_amount, shipping_address, pickup_address)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [1, 'SUCCESS', 'SUCCESS', totalAmount, input.alamatPengiriman, input.alamatPenjemputan],
             async function (err) {
-              if (err) {
-                reject(err);
-                return;
-              }
-
+              if (err) return reject(err);
               const orderId = this.lastID;
 
-              // Insert detail barang ke tabel order_items
               await dbRun(
-                `INSERT INTO order_items (order_id, product_id, product_name, quantity, price_at_purchase)
-                 VALUES (?, ?, ?, ?, ?)`,
+                `INSERT INTO order_items (order_id, product_id, product_name, quantity, price_at_purchase, weight_per_item)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
                 [
                   orderId,
                   parseInt(input.productId),
-                  'Product Name', // Dalam production, ambil dari Product Service
+                  namaAsli,
                   input.quantity,
-                  hargaBarang,
+                  hargaAsli,
+                  beratAsli
                 ]
               );
 

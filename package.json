@@ -1,23 +1,25 @@
 {
-  "name": "mock-external-server",
+  "name": "black-market-root",
   "version": "1.0.0",
-  "description": "Mock External Server untuk simulasi API Logistik dan Payment",
-  "main": "mock-external-server.js",
-  "type": "module",
+  "private": true,
+  "description": "Root configuration for Black Market Microservices",
+  "workspaces": [
+    "user-service",
+    "product-service",
+    "order-service",
+    "review-service",
+    "notification-service",
+    "ecommerce-frontend",
+    "mock-server"
+  ],
   "scripts": {
-    "mock:start": "node mock-external-server.js",
-    "mock:dev": "nodemon mock-external-server.js"
-  },
-  "keywords": ["mock", "graphql", "apollo-server"],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "apollo-server": "^3.12.1",
-    "graphql": "^16.8.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.2"
+    "install:all": "npm install",
+    "dev:frontend": "npm run dev --workspace=ecommerce-frontend",
+    "dev:product": "npm run dev --workspace=product-service",
+    "dev:order": "npm run dev --workspace=order-service",
+    "dev:user": "npm run dev --workspace=user-service",
+    "dev:review": "npm run dev --workspace=review-service",
+    "dev:notification": "npm run dev --workspace=notification-service",
+    "dev:mock": "npm run dev --workspace=mock-server"
   }
 }
-
-
