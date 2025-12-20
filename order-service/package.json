@@ -1,0 +1,28 @@
+{
+  "name": "order-service",
+  "version": "1.0.0",
+  "description": "Order Service - GraphQL Microservice",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "graphql",
+    "apollo-server",
+    "microservice",
+    "order"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "apollo-server": "^3.12.1",
+    "axios": "^1.6.0",
+    "graphql": "^16.8.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "user-service",
+  "version": "1.0.0",
+  "description": "User Service - GraphQL Microservice for Authentication",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "graphql",
+    "apollo-server",
+    "microservice",
+    "auth"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "apollo-server": "^3.12.1",
+    "graphql": "^16.8.1",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
