@@ -189,6 +189,12 @@ const server = new ApolloServer({
   },
 });
 
+// Initialize database and start server
+initDatabase()
+  .then(() => {
+    return server.listen({ port: 4000 });
+  })
+
 // Graceful shutdown
 process.on('SIGINT', () => {
   db.close((err) => {
