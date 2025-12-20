@@ -1,53 +1,79 @@
 import { ApolloServer, gql } from 'apollo-server';
 
-// GraphQL Schema
 const typeDefs = gql`
-  type PaymentResponse {
+  # Definisi Opsi Pengiriman
+  type ShippingOption {
+    service: String!
+    description: String!
+    ongkir: Int!
+    estimasi: String!
+  }
+
+  type VAResponse {
+    vaNumber: String!
+    amount: Float!
     status: String!
-    transactionId: String!
   }
 
   type Query {
-    cekOngkir(tujuan: String, berat: Int): Int!
+    # Logistik: Menerima data, mengembalikan DAFTAR opsi (bukan cuma 1 harga)
+    cekOpsiOngkir(asal: String!, tujuan: String!, berat: Int!): [ShippingOption!]!
   }
 
   type Mutation {
-    bayar(userId: ID!, amount: Float!): PaymentResponse!
+    # Payment: Menerima request total bayar, mengembalikan Nomor VA
+    createVA(userId: String!, amount: Float!): VAResponse!
+    
+    # Payment: Simulasi Cek apakah user sudah bayar VA tersebut
+    checkPaymentStatus(vaNumber: String!): String!
+
+    # Logistik: Menerima request kirim, mengembalikan Nomor Resi
+    createResi(service: String!, asal: String!, tujuan: String!, berat: Int!): String!
   }
 `;
 
-// Resolvers
 const resolvers = {
   Query: {
-    cekOngkir: (_, { tujuan, berat }) => {
-      console.log('🚚 [MOCK LOGISTIK] Request cekOngkir diterima');
-      console.log(`   - Tujuan: ${tujuan || 'N/A'}`);
-      console.log(`   - Berat: ${berat || 'N/A'} gram`);
-      console.log('   - Response: Rp 25.000');
-      return 25000;
+    cekOpsiOngkir: (_, { asal, tujuan, berat }) => {
+      console.log(`🚚 [LOGISTIK] Cek rute: ${asal} -> ${tujuan} (${berat}g)`);
+      
+      // Simulasi logika harga pihak logistik
+      const basePrice = Math.ceil(berat / 1000) * 5000;
+      
+      return [
+        { service: "INSTANT", description: "Layanan Kilat (GoSend/Grab)", ongkir: 20000 + basePrice, estimasi: "3 Jam" },
+        { service: "REGULER", description: "JNE/J&T Reguler", ongkir: 10000 + basePrice, estimasi: "2-3 Hari" },
+        { service: "HEMAT",   description: "SiCepat Halu",  ongkir: 5000 + basePrice,  estimasi: "5-7 Hari" },
+        { service: "KARGO",   description: "JNE Trucking",  ongkir: 8000 + basePrice,  estimasi: "1-2 Minggu" }
+      ];
     },
   },
   Mutation: {
-    bayar: (_, { userId, amount }) => {
-      console.log('💳 [MOCK PAYMENT] Request bayar diterima');
-      console.log(`   - User ID: ${userId}`);
-      console.log(`   - Amount: Rp ${amount?.toLocaleString('id-ID') || 'N/A'}`);
-      console.log('   - Response: SUCCESS - Trx-Dummy-123');
-      return {
-        status: 'SUCCESS',
-        transactionId: 'Trx-Dummy-123',
-      };
+    createVA: (_, { userId, amount }) => {
+      // Payment Service generate nomor unik
+      const va = `8800${Math.floor(Math.random() * 1000000000)}`;
+      console.log(`💳 [PAYMENT] Create VA User ${userId}: ${va} (Rp ${amount})`);
+      return { vaNumber: va, amount, status: "PENDING" };
     },
+    checkPaymentStatus: (_, { vaNumber }) => {
+      console.log(`💳 [PAYMENT] Cek Status VA: ${vaNumber}`);
+      // Simulasi: Kita anggap user selalu berhasil bayar
+      return "SUCCESS";
+    },
+    createResi: (_, { service }) => {
+      const resi = `JP-${service}-${Math.floor(Math.random() * 10000)}`;
+      console.log(`🚚 [LOGISTIK] Cetak Resi (${service}): ${resi}`);
+      return resi;
+    }
   },
 };
 
-// Apollo Server Configuration
 const server = new ApolloServer({
   typeDefs,
   resolvers,
-  cors: {
-    origin: '*',
-    credentials: true,
-  },
+  cors: { origin: '*', credentials: true },
 });
 
+server.listen({ port: 5000 }).then(({ url }) => {
+  console.log(`🚀 Mock Server (Logistik & Payment) ready at ${url}`);
+});

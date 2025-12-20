@@ -108,6 +108,7 @@ const typeDefs = gql`
 
   type Query {
     getProducts: [Product!]!
+    getProduct(id: ID!): Product
   }
 
   type Mutation {
@@ -134,6 +135,11 @@ const resolvers = {
     getProducts: async () => {
       const rows = await dbAll('SELECT * FROM products ORDER BY created_at DESC');
       return rows.map(mapDbToGraphQL);
+    },
+    getProduct: async (_, { id }) => {
+      const row = await dbGet('SELECT * FROM products WHERE id = ?', [id]);
+      if (!row) return null;
+      return mapDbToGraphQL(row);
     },
   },
   Mutation: {

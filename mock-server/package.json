@@ -5,8 +5,8 @@
   "main": "mock-external-server.js",
   "type": "module",
   "scripts": {
-    "mock:start": "node mock-external-server.js",
-    "mock:dev": "nodemon mock-external-server.js"
+    "start": "node mock-external-server.js", 
+    "dev": "nodemon mock-external-server.js"   
   },
   "keywords": ["mock", "graphql", "apollo-server"],
   "author": "",

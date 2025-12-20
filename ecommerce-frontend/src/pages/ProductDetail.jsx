@@ -155,7 +155,8 @@ export default function ProductDetail() {
           createOrder(input: {
             productId: "${product.id}",
             quantity: ${quantity},
-            alamatPengiriman: "${alamatPengiriman.replace(/"/g, '\\"')}"
+            alamatPengiriman: "${alamatPengiriman.replace(/"/g, '\\"')}",
+            alamatPenjemputan: "Gudang Pusat Black Market"  // <--- WAJIB DITAMBAHKAN
           }) {
             id
             status
