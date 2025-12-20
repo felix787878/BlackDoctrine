@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-Server akan berjalan di `http://localhost:4000/graphql`
+Server akan berjalan di `http://localhost:6002/graphql`
 
 ## Schema GraphQL
 

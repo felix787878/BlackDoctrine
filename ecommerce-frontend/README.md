@@ -38,7 +38,7 @@ Aplikasi akan berjalan di `http://localhost:3000`
 Edit file `src/graphql/apolloClient.js` dan sesuaikan URL GraphQL Gateway/Service:
 
 ```javascript
-uri: 'http://localhost:4000/graphql' // Ganti dengan URL yang sesuai
+uri: 'http://localhost:6002/graphql' // Ganti dengan URL yang sesuai
 ```
 
 ## Build untuk Production

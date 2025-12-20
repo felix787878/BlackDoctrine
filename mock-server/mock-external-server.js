@@ -74,6 +74,6 @@ const server = new ApolloServer({
   cors: { origin: '*', credentials: true },
 });
 
-server.listen({ port: 5000 }).then(({ url }) => {
+server.listen({ port: 6004 }).then(({ url }) => {
   console.log(`🚀 Mock Server (Logistik & Payment) ready at ${url}`);
 });

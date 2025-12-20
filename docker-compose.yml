@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  user-service:
+    build: ./user-service
+    ports:
+      - "6001:6001"
+    volumes:
+      - ./user-service:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  product-service:
+    build: ./product-service
+    ports:
+      - "6002:6002"
+    volumes:
+      - ./product-service:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "6003:6003"
+    volumes:
+      - ./order-service:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PRODUCT_SERVICE_URL=http://product-service:6002/graphql
+      - LOGISTICS_URL=http://mock-server:6004/graphql
+
+  mock-server:
+    build: ./mock-server
+    ports:
+      - "6004:6004"
+    volumes:
+      - ./mock-server:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+
+  ecommerce-frontend:
+    build: ./ecommerce-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./ecommerce-frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - VITE_GRAPHQL_URL=http://localhost:6002/graphql

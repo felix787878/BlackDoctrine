@@ -53,7 +53,7 @@ export default function Home() {
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
           <p className="text-red-600 text-lg font-medium">Error: {error.message}</p>
-          <p className="text-gray-600 mt-2">Pastikan GraphQL server berjalan di http://localhost:4000/graphql</p>
+          <p className="text-gray-600 mt-2">Pastikan GraphQL server berjalan di http://localhost:6002/graphql</p>
         </div>
       </div>
     )
