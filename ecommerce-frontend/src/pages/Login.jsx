@@ -1,7 +1,25 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useMutation, gql } from '@apollo/client'
+import { userClient } from '../graphql/apolloClient'
 import toast from 'react-hot-toast'
+
+const LOGIN_MUTATION = gql`
+  mutation Login($email: String!, $password: String!) {
+    login(email: $email, password: $password) {
+      token
+      user {
+        id
+        nama
+        email
+        role
+        isActive
+        statusLabel
+      }
+    }
+  }
+`
 
 export default function Login() {
   const navigate = useNavigate()
@@ -10,7 +28,31 @@ export default function Login() {
     email: '',
     password: '',
   })
-  const [isLoading, setIsLoading] = useState(false)
+  const [loginMutation, { loading: isLoading }] = useMutation(LOGIN_MUTATION, {
+    client: userClient,
+    onCompleted: (data) => {
+      const { token, user } = data.login
+
+      // Simpan token ke localStorage
+      localStorage.setItem('token', token)
+
+      // Simpan data user ke context
+      login(user)
+
+      toast.success(`Selamat datang, ${user.nama}!`)
+
+      // Redirect berdasarkan role
+      if (user.role === 'ADMIN') {
+        navigate('/admin')
+      } else {
+        navigate('/')
+      }
+    },
+    onError: (error) => {
+      console.error('Login error:', error)
+      toast.error(error.message || 'Login gagal')
+    }
+  })
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -22,60 +64,13 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
 
-    try {
-      const query = `
-        query Login {
-          login(email: "${formData.email}", password: "${formData.password}") {
-            token
-            user {
-              id
-              nama
-              email
-              role
-            }
-          }
-        }
-      `
-
-      const response = await fetch('http://localhost:4002/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: query,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.errors) {
-        toast.error(result.errors[0].message || 'Email atau password salah')
-      } else if (result.data && result.data.login) {
-        const { user } = result.data.login
-        
-        // Simpan data user ke context
-        login(user)
-        
-        toast.success(`Selamat datang, ${user.nama}!`)
-        
-        // Redirect berdasarkan role
-        if (user.role === 'ADMIN') {
-          navigate('/admin')
-        } else {
-          navigate('/')
-        }
-      } else {
-        throw new Error('Unexpected response format')
+    loginMutation({
+      variables: {
+        email: formData.email,
+        password: formData.password,
       }
-    } catch (error) {
-      console.error('Error logging in:', error)
-      toast.error(`Gagal login: ${error.message}`)
-    } finally {
-      setIsLoading(false)
-    }
+    })
   }
 
   return (

@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@apollo/client'
 import { GET_PRODUCTS } from '../graphql/queries'
+import { productClient } from '../graphql/apolloClient'
 import ProductCard from '../components/ProductCard'
 
 export default function Home() {
   const [activeCategory, setActiveCategory] = useState('Semua')
-  const { loading, error, data } = useQuery(GET_PRODUCTS)
+  const { loading, error, data } = useQuery(GET_PRODUCTS, { client: productClient })
 
   // Auto-detect kategori unik dari produk
   const categories = useMemo(() => {

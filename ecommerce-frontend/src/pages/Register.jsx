@@ -1,6 +1,21 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
+import { useMutation, gql } from '@apollo/client'
+import { userClient } from '../graphql/apolloClient'
 import toast from 'react-hot-toast'
+
+const REGISTER_MUTATION = gql`
+  mutation Register($nama: String!, $email: String!, $password: String!) {
+    register(nama: $nama, email: $email, password: $password) {
+      id
+      nama
+      email
+      role
+      isActive
+      statusLabel
+    }
+  }
+`
 
 export default function Register() {
   const navigate = useNavigate()
@@ -9,7 +24,17 @@ export default function Register() {
     email: '',
     password: '',
   })
-  const [isLoading, setIsLoading] = useState(false)
+  const [registerMutation, { loading: isLoading }] = useMutation(REGISTER_MUTATION, {
+    client: userClient,
+    onCompleted: () => {
+      toast.success('Registrasi berhasil! Silakan login.')
+      navigate('/login')
+    },
+    onError: (error) => {
+      console.error('Register error:', error)
+      toast.error(error.message || 'Gagal mendaftar')
+    }
+  })
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -21,46 +46,14 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setIsLoading(true)
 
-    try {
-      const mutation = `
-        mutation Register {
-          register(nama: "${formData.nama}", email: "${formData.email}", password: "${formData.password}") {
-            id
-            nama
-            email
-            role
-          }
-        }
-      `
-
-      const response = await fetch('http://localhost:4002/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: mutation,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (result.errors) {
-        toast.error(result.errors[0].message || 'Gagal mendaftar')
-      } else if (result.data && result.data.register) {
-        toast.success('Registrasi berhasil! Silakan login.')
-        navigate('/login')
-      } else {
-        throw new Error('Unexpected response format')
+    registerMutation({
+      variables: {
+        nama: formData.nama,
+        email: formData.email,
+        password: formData.password,
       }
-    } catch (error) {
-      console.error('Error registering:', error)
-      toast.error(`Gagal mendaftar: ${error.message}`)
-    } finally {
-      setIsLoading(false)
-    }
+    })
   }
 
   return (

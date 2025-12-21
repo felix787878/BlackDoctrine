@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@apollo/client'
 import { ADD_PRODUCT, GET_PRODUCTS } from '../graphql/queries'
+import { productClient } from '../graphql/apolloClient'
 import toast from 'react-hot-toast'
 
 export default function AdminDashboard() {
@@ -16,11 +17,12 @@ export default function AdminDashboard() {
   const [customCategory, setCustomCategory] = useState('')
   const [showCustomCategory, setShowCustomCategory] = useState(false)
 
-  const { data, refetch } = useQuery(GET_PRODUCTS)
+  const { data, refetch } = useQuery(GET_PRODUCTS, { client: productClient })
   const products = data?.getProducts || []
 
   const [addProduct, { loading, error }] = useMutation(ADD_PRODUCT, {
-    refetchQueries: [{ query: GET_PRODUCTS }],
+    client: productClient,
+    refetchQueries: [{ query: GET_PRODUCTS, context: { client: productClient } }],
     onCompleted: () => {
       toast.success('Produk berhasil ditambahkan!')
       setFormData({

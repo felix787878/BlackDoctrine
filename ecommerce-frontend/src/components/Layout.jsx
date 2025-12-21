@@ -23,6 +23,18 @@ export default function Layout({ children }) {
                     Halo, <span className="font-medium text-gray-900">{user.nama}</span>
                   </span>
                   
+                  {/* Profile link untuk semua user yang login */}
+                  <Link
+                    to="/profile"
+                    className={`text-sm font-medium transition-colors ${
+                      location.pathname === '/profile'
+                        ? 'text-primary-600'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Profile
+                  </Link>
+
                   {/* Menu Admin hanya untuk ADMIN */}
                   {isAdmin && (
                     <Link
@@ -36,7 +48,7 @@ export default function Layout({ children }) {
                       Admin
                     </Link>
                   )}
-                  
+
                   <button
                     onClick={logout}
                     className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"

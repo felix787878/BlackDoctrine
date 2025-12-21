@@ -21,6 +21,8 @@ async function initDatabase() {
       email TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       role TEXT DEFAULT 'BUYER',
+      is_active INTEGER DEFAULT 1,
+      deleted_at DATETIME DEFAULT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -75,6 +77,9 @@ const typeDefs = gql`
     nama: String!
     email: String!
     role: String!
+    isActive: Boolean!
+    deletedAt: String
+    statusLabel: String!
   }
 
   type UserProfile {
@@ -106,6 +111,10 @@ const typeDefs = gql`
   type Mutation {
     register(nama: String!, email: String!, password: String!): User!
     login(email: String!, password: String!): AuthPayload!
+    updateProfile(nama: String, email: String): User!
+    changePassword(oldPass: String!, newPass: String!): Boolean!
+    softDeleteAccount: Boolean!
+    adminRestoreUser(userId: ID!): User!
   }
 `;
 
@@ -121,6 +130,11 @@ function mapDbToUser(row) {
 
 // Resolvers
 const resolvers = {
+  User: {
+    isActive: (parent) => Boolean(parent.is_active),
+    deletedAt: (parent) => parent.deleted_at,
+    statusLabel: (parent) => parent.is_active ? 'Active' : 'Account Deleted',
+  },
   Query: {
     getUserProfile: async (_, { userId }, { user }) => {
       // Require authentication
@@ -162,7 +176,25 @@ const resolvers = {
       if (!user) {
         throw new AuthenticationError('You must be logged in');
       }
-      return user;
+
+      // Get full user data from database
+      const dbUser = await dbGet('SELECT * FROM auth_users WHERE id = ?', [user.id]);
+
+      if (!dbUser) {
+        throw new AuthenticationError('User not found');
+      }
+
+      // Get profile data
+      const profile = await dbGet('SELECT * FROM user_profiles WHERE user_id = ?', [dbUser.id]);
+
+      return {
+        id: String(dbUser.id),
+        nama: profile?.full_name || 'User',
+        email: dbUser.email,
+        role: dbUser.role,
+        is_active: dbUser.is_active,
+        deleted_at: dbUser.deleted_at,
+      };
     },
   },
   Mutation: {
@@ -213,6 +245,8 @@ const resolvers = {
               nama: nama,
               email: user.email,
               role: user.role,
+              is_active: user.is_active,
+              deleted_at: user.deleted_at,
             });
           }
         );
@@ -234,6 +268,12 @@ const resolvers = {
       const validPassword = await bcrypt.compare(password, user.password_hash);
       if (!validPassword) {
         throw new Error('Email atau password salah');
+      }
+
+      // Check if account is active
+      if (!user.is_active) {
+        const deletedDate = user.deleted_at ? new Date(user.deleted_at).toLocaleDateString() : 'unknown date';
+        throw new AuthenticationError(`Account is deleted/inactive since ${deletedDate}`);
       }
 
       // Get profile for name
@@ -259,6 +299,121 @@ const resolvers = {
         },
       };
     },
+
+    updateProfile: async (_, { nama, email }, { user }) => {
+      if (!user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+
+      // Check if user is active
+      const currentUser = await dbGet('SELECT * FROM auth_users WHERE id = ?', [user.id]);
+      if (!currentUser?.is_active) {
+        throw new AuthenticationError('Account is inactive');
+      }
+
+      // Update user profile
+      if (nama) {
+        await dbRun('UPDATE user_profiles SET full_name = ? WHERE user_id = ?', [nama, user.id]);
+      }
+
+      if (email) {
+        // Check if email is already taken by another user
+        const existingUser = await dbGet('SELECT id FROM auth_users WHERE email = ? AND id != ?', [email, user.id]);
+        if (existingUser) {
+          throw new Error('Email sudah digunakan oleh pengguna lain');
+        }
+        await dbRun('UPDATE auth_users SET email = ? WHERE id = ?', [email, user.id]);
+      }
+
+      // Return updated user data
+      const updatedUser = await dbGet('SELECT * FROM auth_users WHERE id = ?', [user.id]);
+      const updatedProfile = await dbGet('SELECT * FROM user_profiles WHERE user_id = ?', [user.id]);
+
+      return {
+        id: String(updatedUser.id),
+        nama: updatedProfile?.full_name || 'User',
+        email: updatedUser.email,
+        role: updatedUser.role,
+        is_active: updatedUser.is_active,
+        deleted_at: updatedUser.deleted_at,
+      };
+    },
+
+    changePassword: async (_, { oldPass, newPass }, { user }) => {
+      if (!user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+
+      // Check if user is active
+      const currentUser = await dbGet('SELECT * FROM auth_users WHERE id = ?', [user.id]);
+      if (!currentUser?.is_active) {
+        throw new AuthenticationError('Account is inactive');
+      }
+
+      // Verify old password
+      const validOldPassword = await bcrypt.compare(oldPass, currentUser.password_hash);
+      if (!validOldPassword) {
+        throw new Error('Password lama salah');
+      }
+
+      // Hash new password
+      const hashedNewPassword = await bcrypt.hash(newPass, 12);
+
+      // Update password
+      await dbRun('UPDATE auth_users SET password_hash = ? WHERE id = ?', [hashedNewPassword, user.id]);
+
+      return true;
+    },
+
+    softDeleteAccount: async (_, __, { user }) => {
+      if (!user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+
+      // Check if user is active
+      const currentUser = await dbGet('SELECT * FROM auth_users WHERE id = ?', [user.id]);
+      if (!currentUser?.is_active) {
+        throw new AuthenticationError('Account is already inactive');
+      }
+
+      // Soft delete account
+      await dbRun('UPDATE auth_users SET is_active = 0, deleted_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
+
+      return true;
+    },
+
+    adminRestoreUser: async (_, { userId }, { user }) => {
+      if (!user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+
+      // Check if user is admin
+      if (user.role !== 'ADMIN') {
+        throw new AuthenticationError('Admin access required');
+      }
+
+      // Find target user
+      const targetUser = await dbGet('SELECT * FROM auth_users WHERE id = ?', [parseInt(userId)]);
+      if (!targetUser) {
+        throw new Error('User tidak ditemukan');
+      }
+
+      // Restore user
+      await dbRun('UPDATE auth_users SET is_active = 1, deleted_at = NULL WHERE id = ?', [parseInt(userId)]);
+
+      // Return restored user data
+      const restoredUser = await dbGet('SELECT * FROM auth_users WHERE id = ?', [parseInt(userId)]);
+      const restoredProfile = await dbGet('SELECT * FROM user_profiles WHERE user_id = ?', [parseInt(userId)]);
+
+      return {
+        id: String(restoredUser.id),
+        nama: restoredProfile?.full_name || 'User',
+        email: restoredUser.email,
+        role: restoredUser.role,
+        is_active: restoredUser.is_active,
+        deleted_at: restoredUser.deleted_at,
+      };
+    },
   },
 };
 
@@ -282,7 +437,7 @@ const server = new ApolloServer({
         // Verify the JWT token
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'pasaribu');
 
-        // Return user info in context
+        // Return user info in context (basic info from JWT)
         return {
           user: {
             id: String(decoded.userId),
@@ -304,7 +459,15 @@ const server = new ApolloServer({
 // Initialize database and start server
 initDatabase()
   .then(() => {
+    console.log('🚀 Starting Apollo Server...');
     return server.listen({ port: 6001 });
+  })
+  .then(({ url }) => {
+    console.log(`🚀 User Service ready at ${url}`);
+  })
+  .catch((error) => {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
   })
 
 // Graceful shutdown
