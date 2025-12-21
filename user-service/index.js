@@ -1,6 +1,8 @@
-import { ApolloServer, gql } from 'apollo-server';
+import { ApolloServer, gql, AuthenticationError } from 'apollo-server';
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 // Setup SQLite Database
 const db = new sqlite3.Database('./users.db');
@@ -37,27 +39,30 @@ async function initDatabase() {
 
   // Check if auth_users table is empty and seed admin
   const count = await dbGet('SELECT COUNT(*) as count FROM auth_users');
-  
+
   if (count.count === 0) {
     console.log('👤 Seeding admin user...');
-    
+
+    // Hash the admin password
+    const hashedPassword = await bcrypt.hash('nword', 12);
+
     // Insert admin user
     await dbRun(
       `INSERT INTO auth_users (email, password_hash, role)
        VALUES (?, ?, ?)`,
-      ['admin@gmail.com', 'nword', 'ADMIN']
+      ['admin@gmail.com', hashedPassword, 'ADMIN']
     );
-    
+
     // Get admin ID
     const admin = await dbGet('SELECT id FROM auth_users WHERE email = ?', ['admin@gmail.com']);
-    
+
     // Insert admin profile (optional, bisa kosong)
     await dbRun(
       `INSERT INTO user_profiles (user_id, full_name)
        VALUES (?, ?)`,
       [admin.id, 'Admin']
     );
-    
+
     console.log('✅ Admin user seeded successfully');
     console.log('🔐 Admin login: admin@gmail.com / nword');
   }
@@ -88,18 +93,19 @@ const typeDefs = gql`
     profile: UserProfile
   }
 
-  type LoginResponse {
+  type AuthPayload {
     token: String!
     user: User!
   }
 
   type Query {
-    login(email: String!, password: String!): LoginResponse!
     getUserProfile(userId: ID!): UserWithProfile
+    me: User
   }
 
   type Mutation {
     register(nama: String!, email: String!, password: String!): User!
+    login(email: String!, password: String!): AuthPayload!
   }
 `;
 
@@ -116,58 +122,33 @@ function mapDbToUser(row) {
 // Resolvers
 const resolvers = {
   Query: {
-    login: async (_, { email, password }) => {
-      // Cek di database
-      const user = await dbGet(
-        'SELECT * FROM auth_users WHERE email = ? AND password_hash = ?',
-        [email, password]
-      );
-
+    getUserProfile: async (_, { userId }, { user }) => {
+      // Require authentication
       if (!user) {
-        throw new Error('Email atau password salah');
+        throw new AuthenticationError('You must be logged in');
       }
 
-      // Get profile untuk nama
-      const profile = await dbGet(
-        'SELECT * FROM user_profiles WHERE user_id = ?',
-        [user.id]
-      );
-
-      // Generate token sederhana (dalam production, gunakan JWT)
-      const token = `user-token-${user.id}-${Date.now()}`;
-
-      return {
-        token,
-        user: {
-          id: String(user.id),
-          nama: profile?.full_name || 'User',
-          email: user.email,
-          role: user.role,
-        },
-      };
-    },
-    getUserProfile: async (_, { userId }) => {
       // Get user from auth_users
-      const user = await dbGet(
+      const dbUser = await dbGet(
         'SELECT * FROM auth_users WHERE id = ?',
         [parseInt(userId)]
       );
 
-      if (!user) {
+      if (!dbUser) {
         throw new Error('User tidak ditemukan');
       }
 
       // Get profile from user_profiles
       const profile = await dbGet(
         'SELECT * FROM user_profiles WHERE user_id = ?',
-        [user.id]
+        [dbUser.id]
       );
 
       return {
-        id: String(user.id),
+        id: String(dbUser.id),
         nama: profile?.full_name || 'User',
-        email: user.email,
-        role: user.role,
+        email: dbUser.email,
+        role: dbUser.role,
         profile: profile ? {
           user_id: String(profile.user_id),
           full_name: profile.full_name,
@@ -177,10 +158,16 @@ const resolvers = {
         } : null,
       };
     },
+    me: async (_, __, { user }) => {
+      if (!user) {
+        throw new AuthenticationError('You must be logged in');
+      }
+      return user;
+    },
   },
   Mutation: {
     register: async (_, { nama, email, password }) => {
-      // Cek apakah email sudah terdaftar
+      // Check if email is already registered
       const existingUser = await dbGet(
         'SELECT * FROM auth_users WHERE email = ?',
         [email]
@@ -190,12 +177,15 @@ const resolvers = {
         throw new Error('Email sudah terdaftar');
       }
 
-      // Insert ke auth_users
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Insert into auth_users
       return new Promise((resolve, reject) => {
         db.run(
           `INSERT INTO auth_users (email, password_hash, role)
            VALUES (?, ?, ?)`,
-          [email, password, 'BUYER'], // Default role: BUYER
+          [email, hashedPassword, 'BUYER'], // Default role: BUYER
           async function (err) {
             if (err) {
               if (err.message.includes('UNIQUE constraint failed')) {
@@ -208,7 +198,7 @@ const resolvers = {
 
             const userId = this.lastID;
 
-            // Insert ke user_profiles dengan default profile kosong
+            // Insert into user_profiles with default profile
             await dbRun(
               `INSERT INTO user_profiles (user_id, full_name)
                VALUES (?, ?)`,
@@ -228,6 +218,47 @@ const resolvers = {
         );
       });
     },
+
+    login: async (_, { email, password }) => {
+      // Find user by email
+      const user = await dbGet(
+        'SELECT * FROM auth_users WHERE email = ?',
+        [email]
+      );
+
+      if (!user) {
+        throw new Error('Email atau password salah');
+      }
+
+      // Compare password with hash
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+      if (!validPassword) {
+        throw new Error('Email atau password salah');
+      }
+
+      // Get profile for name
+      const profile = await dbGet(
+        'SELECT * FROM user_profiles WHERE user_id = ?',
+        [user.id]
+      );
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, role: user.role },
+        process.env.JWT_SECRET || 'pasaribu',
+        { expiresIn: '1d' }
+      );
+
+      return {
+        token,
+        user: {
+          id: String(user.id),
+          nama: profile?.full_name || 'User',
+          email: user.email,
+          role: user.role,
+        },
+      };
+    },
   },
 };
 
@@ -238,6 +269,35 @@ const server = new ApolloServer({
   cors: {
     origin: '*',
     credentials: true,
+  },
+  context: ({ req }) => {
+    // Get the Authorization header
+    const authHeader = req.headers.authorization || '';
+
+    // Check if it starts with Bearer
+    if (authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+      try {
+        // Verify the JWT token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'pasaribu');
+
+        // Return user info in context
+        return {
+          user: {
+            id: String(decoded.userId),
+            email: decoded.email,
+            role: decoded.role,
+          },
+        };
+      } catch (error) {
+        // Token is invalid, return empty context
+        return {};
+      }
+    }
+
+    // No token provided
+    return {};
   },
 });
 

@@ -10,6 +10,7 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - JWT_SECRET=pasaribu
 
   product-service:
     build: ./product-service
