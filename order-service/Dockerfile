@@ -8,6 +8,6 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 6003
+EXPOSE 7003
 
 CMD ["npx", "nodemon", "index.js"]

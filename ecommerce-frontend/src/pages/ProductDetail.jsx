@@ -1,33 +1,10 @@
-// CSS Leaflet WAJIB di baris paling atas
-import 'leaflet/dist/leaflet.css'
-
-import { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet'
+import { useState, useEffect } from 'react'
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom'
+import { useQuery } from '@apollo/client'
 import { useAuth } from '../context/AuthContext'
+import { GET_MY_ADDRESSES } from '../graphql/queries'
+import { userClient } from '../graphql/apolloClient'
 import toast from 'react-hot-toast'
-import L from 'leaflet'
-
-// Fix Icon Leaflet - WAJIB untuk mencegah icon hilang
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-})
-
-// Komponen LocationMarker untuk handle klik peta
-function LocationMarker({ onMapClick, position }) {
-  useMapEvents({
-    click: (e) => {
-      if (onMapClick) {
-        onMapClick(e.latlng.lat, e.latlng.lng)
-      }
-    },
-  })
-
-  return position ? <Marker position={position} /> : null
-}
 
 export default function ProductDetail() {
   const { state } = useLocation()
@@ -37,10 +14,37 @@ export default function ProductDetail() {
 
   // State untuk form
   const [quantity, setQuantity] = useState(1)
-  const [alamatPengiriman, setAlamatPengiriman] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [markerPosition, setMarkerPosition] = useState([-6.9175, 107.6191]) // Default: Bandung
-  const [isLoadingAddress, setIsLoadingAddress] = useState(false)
+  const [showAddressModal, setShowAddressModal] = useState(false)
+  const [selectedAddress, setSelectedAddress] = useState(null)
+
+  // Query addresses
+  const { data: addressesData } = useQuery(GET_MY_ADDRESSES, {
+    client: userClient,
+    skip: !user,
+    errorPolicy: 'all'
+  })
+
+  const addresses = addressesData?.myAddresses || []
+  
+  // Auto-select primary address when addresses load
+  useEffect(() => {
+    if (addresses.length > 0 && !selectedAddress) {
+      const primaryAddress = addresses.find(addr => addr.is_primary === true)
+      if (primaryAddress) {
+        setSelectedAddress(primaryAddress)
+      }
+    }
+  }, [addresses, selectedAddress])
+  
+  // Format alamat untuk dikirim ke order
+  const formatAddressForOrder = (address) => {
+    if (!address) return ''
+    const phonePart = address.recipient_phone ? ` (${address.recipient_phone})` : ''
+    return `[${address.label}] Penerima: ${address.recipient_name}${phonePart} - ${address.street}, ${address.city}, ${address.province}`
+  }
+  
+  const formattedAddress = selectedAddress ? formatAddressForOrder(selectedAddress) : ''
 
   // CEK PENTING: Jika state?.product kosong/null, JANGAN RENDER HALAMAN PRODUK
   if (!state?.product) {
@@ -99,39 +103,6 @@ export default function ProductDetail() {
     }
   }
 
-  // Handle klik peta - Reverse Geocoding ke OpenStreetMap
-  const handleMapClick = async (lat, lng) => {
-    setMarkerPosition([lat, lng])
-    setIsLoadingAddress(true)
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'ECommerceApp/1.0',
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch address')
-      }
-
-      const data = await response.json()
-
-      if (data && data.display_name) {
-        setAlamatPengiriman(data.display_name)
-      } else {
-        setAlamatPengiriman(`${lat}, ${lng}`)
-      }
-    } catch (error) {
-      console.error('Error fetching address:', error)
-      setAlamatPengiriman(`${lat}, ${lng}`)
-    } finally {
-      setIsLoadingAddress(false)
-    }
-  }
 
   // Handle pembelian
   const handleBuy = async () => {
@@ -142,8 +113,9 @@ export default function ProductDetail() {
       return
     }
 
-    if (!alamatPengiriman.trim()) {
-      toast.error('Mohon isi alamat pengiriman terlebih dahulu')
+    if (!selectedAddress) {
+      toast.error('Harap pilih alamat pengiriman terlebih dahulu')
+      setShowAddressModal(true)
       return
     }
 
@@ -155,8 +127,8 @@ export default function ProductDetail() {
           createOrder(input: {
             productId: "${product.id}",
             quantity: ${quantity},
-            alamatPengiriman: "${alamatPengiriman.replace(/"/g, '\\"')}",
-            alamatPenjemputan: "Gudang Pusat Black Market"  // <--- WAJIB DITAMBAHKAN
+            alamatPengiriman: "${formattedAddress.replace(/"/g, '\\"')}",
+            alamatPenjemputan: "Gudang Pusat Black Market"
           }) {
             id
             status
@@ -200,7 +172,7 @@ export default function ProductDetail() {
     }
   }
 
-  const isFormValid = alamatPengiriman.trim().length > 0
+  const isFormValid = selectedAddress !== null
   const isStockAvailable = product.stok > 0
 
   return (
@@ -331,47 +303,129 @@ export default function ProductDetail() {
               </div>
             </div>
 
-            {/* Peta Interaktif */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Pilih Lokasi di Peta <span className="text-red-500">*</span>
-              </label>
-              <div className="relative rounded-lg overflow-hidden border-2 border-gray-300" style={{ zIndex: 0 }}>
-                <MapContainer
-                  center={[-6.9175, 107.6191]}
-                  zoom={13}
-                  style={{ height: '300px', width: '100%' }}
-                  scrollWheelZoom={true}
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
-                  <LocationMarker onMapClick={handleMapClick} position={markerPosition} />
-                </MapContainer>
-                {isLoadingAddress && (
-                  <div className="absolute top-2 right-2 bg-white px-3 py-1 rounded shadow-md text-sm text-gray-600 z-[1000]">
-                    Memuat alamat...
+            {/* Address Selector */}
+            {user ? (
+              addresses.length === 0 ? (
+                <div className="mb-6 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <div className="text-2xl">⚠️</div>
+                    <div className="flex-1">
+                      <h3 className="text-sm font-semibold text-gray-900 mb-2">Alamat Belum Tersedia</h3>
+                      <p className="text-sm text-gray-700 mb-3">
+                        Harap lengkapi alamat pengiriman di Profil terlebih dahulu.
+                      </p>
+                      <Link
+                        to="/profile"
+                        className="text-sm text-blue-600 hover:text-blue-800 underline font-medium"
+                      >
+                        Lengkapi Alamat →
+                      </Link>
+                    </div>
                   </div>
-                )}
+                </div>
+              ) : (
+                <div className="mb-6">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Alamat Pengiriman <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg text-left hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  >
+                    {selectedAddress ? (
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-gray-900">{selectedAddress.label}</span>
+                          {selectedAddress.is_primary && (
+                            <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                              Utama
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-600">
+                          {selectedAddress.recipient_name}
+                          {selectedAddress.recipient_phone && ` (${selectedAddress.recipient_phone})`}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {selectedAddress.street}, {selectedAddress.city}, {selectedAddress.province}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-gray-500">Pilih Alamat Pengiriman</span>
+                    )}
+                  </button>
+                </div>
+              )
+            ) : (
+              <div className="mb-6 p-4 bg-gray-50 border-2 border-gray-200 rounded-lg">
+                <p className="text-sm text-gray-600 text-center">
+                  Silakan <Link to="/login" className="text-blue-600 hover:text-blue-800 underline">login</Link> untuk melanjutkan pembelian
+                </p>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Klik di peta untuk memilih lokasi pengiriman
-              </p>
-            </div>
+            )}
 
-            {/* Input Alamat Pengiriman */}
-            <div className="mb-6">
-              <textarea
-                id="alamat"
-                value={alamatPengiriman}
-                readOnly={true}
-                placeholder="Klik lokasi pada peta di atas untuk mengisi alamat..."
-                rows="4"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed resize-none"
-                required
-              />
-            </div>
+            {/* Address Selection Modal */}
+            {showAddressModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900">Pilih Alamat Pengiriman</h3>
+                      <button
+                        onClick={() => setShowAddressModal(false)}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {addresses.map((address) => (
+                        <button
+                          key={address.id}
+                          onClick={() => {
+                            setSelectedAddress(address)
+                            setShowAddressModal(false)
+                          }}
+                          className={`w-full p-4 border-2 rounded-lg text-left transition-colors ${
+                            selectedAddress?.id === address.id
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 hover:border-blue-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-semibold text-gray-900">{address.label}</span>
+                            {address.is_primary && (
+                              <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                                Utama
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">Penerima:</span> {address.recipient_name}
+                            {address.recipient_phone && ` (${address.recipient_phone})`}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {address.street}, {address.city}, {address.province}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <Link
+                        to="/profile"
+                        className="block text-center text-blue-600 hover:text-blue-800 underline"
+                        onClick={() => setShowAddressModal(false)}
+                      >
+                        + Tambah Alamat Baru
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tombol Beli */}
             <button

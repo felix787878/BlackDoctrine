@@ -17,7 +17,7 @@ const authLink = setContext((_, { headers }) => {
 
 // User Service Client (for authentication, user profiles)
 const userServiceLink = authLink.concat(createHttpLink({
-  uri: import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:6001/graphql',
+  uri: import.meta.env.VITE_GRAPHQL_URL || 'http://localhost:7001/graphql',
 }))
 
 export const userClient = new ApolloClient({
@@ -27,7 +27,7 @@ export const userClient = new ApolloClient({
 
 // Product Service Client (for products) - also needs auth for admin operations
 const productServiceLink = authLink.concat(createHttpLink({
-  uri: 'http://localhost:6002/graphql',
+  uri: 'http://localhost:7002/graphql',
 }))
 
 export const productClient = new ApolloClient({

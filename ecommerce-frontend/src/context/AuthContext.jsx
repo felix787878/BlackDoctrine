@@ -4,6 +4,7 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Load user dari localStorage saat component mount
   useEffect(() => {
@@ -16,6 +17,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('user')
       }
     }
+    setIsLoading(false)
   }, [])
 
   const login = (userData) => {
@@ -34,6 +36,7 @@ export function AuthProvider({ children }) {
     logout,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'ADMIN',
+    isLoading,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -280,9 +280,13 @@ const server = new ApolloServer({
 });
 
 // Initialize database and start server
+const PORT = process.env.PORT || 7003;
 initDatabase()
   .then(() => {
-    return server.listen({ port: 6003 });
+    return server.listen({ port: PORT });
+  })
+  .then(({ url }) => {
+    console.log(`🚀 Order Service ready at ${url}`);
   })
   .catch((error) => {
     console.error('Failed to start server:', error);

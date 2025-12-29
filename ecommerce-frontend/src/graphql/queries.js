@@ -38,19 +38,136 @@ export const GET_ME = gql`
       role
       isActive
       statusLabel
+      avatarUrl
+    }
+  }
+`
+
+export const GET_USER_PROFILE = gql`
+  query GetUserProfile($userId: ID!) {
+    getUserProfile(userId: $userId) {
+      id
+      nama
+      email
+      role
+      profile {
+        user_id
+        full_name
+        phone_number
+        avatarUrl
+      }
+    }
+  }
+`
+
+export const GET_MY_ADDRESSES = gql`
+  query GetMyAddresses {
+    myAddresses {
+      id
+      user_id
+      label
+      recipient_name
+      recipient_phone
+      street
+      city
+      province
+      is_primary
     }
   }
 `
 
 export const UPDATE_PROFILE = gql`
-  mutation UpdateProfile($nama: String, $email: String) {
-    updateProfile(nama: $nama, email: $email) {
+  mutation UpdateProfile(
+    $nama: String
+    $email: String
+    $phoneNumber: String
+  ) {
+    updateProfile(
+      nama: $nama
+      email: $email
+      phoneNumber: $phoneNumber
+    ) {
       id
       nama
       email
       role
       isActive
       statusLabel
+    }
+  }
+`
+
+export const ADD_ADDRESS = gql`
+  mutation AddAddress(
+    $label: String!
+    $recipientName: String!
+    $recipientPhone: String
+    $street: String!
+    $city: String!
+    $province: String!
+  ) {
+    addAddress(
+      label: $label
+      recipientName: $recipientName
+      recipientPhone: $recipientPhone
+      street: $street
+      city: $city
+      province: $province
+    ) {
+      id
+      label
+      recipient_name
+      recipient_phone
+      street
+      city
+      province
+      is_primary
+    }
+  }
+`
+
+export const UPDATE_ADDRESS = gql`
+  mutation UpdateAddress(
+    $id: ID!
+    $label: String!
+    $recipientName: String!
+    $recipientPhone: String
+    $street: String!
+    $city: String!
+    $province: String!
+  ) {
+    updateAddress(
+      id: $id
+      label: $label
+      recipientName: $recipientName
+      recipientPhone: $recipientPhone
+      street: $street
+      city: $city
+      province: $province
+    ) {
+      id
+      label
+      recipient_name
+      recipient_phone
+      street
+      city
+      province
+      is_primary
+    }
+  }
+`
+
+export const DELETE_ADDRESS = gql`
+  mutation DeleteAddress($id: ID!) {
+    deleteAddress(id: $id)
+  }
+`
+
+export const SET_PRIMARY_ADDRESS = gql`
+  mutation SetPrimaryAddress($id: ID!) {
+    setPrimaryAddress(id: $id) {
+      id
+      is_primary
     }
   }
 `

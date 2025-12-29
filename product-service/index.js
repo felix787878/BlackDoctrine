@@ -196,9 +196,17 @@ const server = new ApolloServer({
 });
 
 // Initialize database and start server
+const PORT = process.env.PORT || 7002;
 initDatabase()
   .then(() => {
-    return server.listen({ port: 6002 });
+    return server.listen({ port: PORT });
+  })
+  .then(({ url }) => {
+    console.log(`🚀 Product Service ready at ${url}`);
+  })
+  .catch((error) => {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
   })
 
 // Graceful shutdown

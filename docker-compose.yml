@@ -4,53 +4,57 @@ services:
   user-service:
     build: ./user-service
     ports:
-      - "6001:6001"
+      - "7001:7001"
     volumes:
       - ./user-service:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
       - JWT_SECRET=pasaribu
+      - PORT=7001
 
   product-service:
     build: ./product-service
     ports:
-      - "6002:6002"
+      - "7002:7002"
     volumes:
       - ./product-service:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - PORT=7002
 
   order-service:
     build: ./order-service
     ports:
-      - "6003:6003"
+      - "7003:7003"
     volumes:
       - ./order-service:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - PRODUCT_SERVICE_URL=http://product-service:6002/graphql
-      - LOGISTICS_URL=http://mock-server:6004/graphql
+      - PORT=7003
+      - PRODUCT_SERVICE_URL=http://product-service:7002/graphql
+      - LOGISTICS_URL=http://mock-server:7010/graphql
 
   mock-server:
     build: ./mock-server
     ports:
-      - "6004:6004"
+      - "7010:7010"
     volumes:
       - ./mock-server:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - PORT=7010
 
   ecommerce-frontend:
     build: ./ecommerce-frontend
     ports:
-      - "3000:3000"
+      - "7000:7000"
     volumes:
       - ./ecommerce-frontend:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_GRAPHQL_URL=http://localhost:6001/graphql
+      - VITE_GRAPHQL_URL=http://localhost:7001/graphql

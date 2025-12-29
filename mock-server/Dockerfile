@@ -8,6 +8,6 @@ RUN npm install
 
 COPY . .
 
-EXPOSE 6004
+EXPOSE 7010
 
 CMD ["npx", "nodemon", "mock-external-server.js"]
