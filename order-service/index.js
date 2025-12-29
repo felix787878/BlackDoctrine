@@ -95,8 +95,8 @@ const typeDefs = gql`
 // Helper: Fetch Product Data
 async function fetchProduct(productId) {
   try {
-    const res = await axios.post(`${process.env.PRODUCT_SERVICE_URL}/graphql`, {
-      query: `query { getProduct(id: "${productId}") { namaProduk harga berat } }`
+    const res = await axios.post(`${process.env.PRODUCT_SERVICE_URL || 'http://localhost:7002'}/graphql`, {
+      query: `query { getProduct(id: "${productId}") { namaProduk harga berat stok } }`
     });
     if (res.data.errors) throw new Error(res.data.errors[0].message);
     return res.data.data.getProduct;
@@ -105,9 +105,24 @@ async function fetchProduct(productId) {
   }
 }
 
+// Helper: Decrease Stock
+async function decreaseStock(productId, quantity) {
+  try {
+    const res = await axios.post(`${process.env.PRODUCT_SERVICE_URL || 'http://localhost:7002'}/graphql`, {
+      query: `mutation { decreaseStock(productId: "${productId}", quantity: ${quantity}) }`
+    });
+    if (res.data.errors) {
+      throw new Error(res.data.errors[0].message);
+    }
+    return res.data.data.decreaseStock;
+  } catch (err) {
+    throw new Error("Gagal mengurangi stok: " + err.message);
+  }
+}
+
 // Helper: Fetch Ongkir Options (Re-usable)
 async function fetchShippingOptions(alamatTujuan, totalBerat) {
-  const res = await axios.post('${process.env.LOGISTICS_URL}/graphql', {
+  const res = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
     query: `query { 
       cekOpsiOngkir(asal: "${GUDANG_ADDRESS}", tujuan: "${alamatTujuan}", berat: ${totalBerat}) {
         service description ongkir estimasi
@@ -152,7 +167,7 @@ const resolvers = {
       const totalBerat = product.berat * quantity;
 
       // 2. Tembak Mock Logistik (Kirim alamat GUDANG sebagai asal)
-      const res = await axios.post('${process.env.LOGISTICS_URL}/graphql', {
+      const res = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
         query: `query { 
           cekOpsiOngkir(asal: "${GUDANG_ADDRESS}", tujuan: "${alamatTujuan}", berat: ${totalBerat}) {
             service description ongkir estimasi
@@ -172,10 +187,21 @@ const resolvers = {
         
         // 1. Validasi Produk
         const product = await fetchProduct(input.productId);
+        
+        // 2. Validasi Stok sebelum mengurangi
+        if (product.stok < input.quantity) {
+          throw new Error(`Stok tidak cukup. Tersedia: ${product.stok} unit, Diminta: ${input.quantity} unit`);
+        }
+        
+        // 3. Kurangi stok di Product Service
+        console.log(`📦 Mengurangi stok produk ${input.productId} sebanyak ${input.quantity}...`);
+        await decreaseStock(input.productId, input.quantity);
+        console.log(`   ✅ Stok berhasil dikurangi`);
+        
         const totalBerat = product.berat * input.quantity;
         const totalHargaBarang = product.harga * input.quantity;
 
-        // 2. LOGIKA BARU: Backend tanya sendiri ke Logistik (Validasi Harga)
+        // 4. LOGIKA BARU: Backend tanya sendiri ke Logistik (Validasi Harga)
         console.log(`🚚 Validasi Ongkir untuk metode: ${input.metodePengiriman}...`);
         
         // Panggil helper function baru
@@ -191,7 +217,7 @@ const resolvers = {
         const realOngkir = selectedOption.ongkir; // AMBIL HARGA DARI SINI
         console.log(`   ✅ Metode Valid. Ongkir Asli: Rp ${realOngkir}`);
 
-        // 3. Hitung Grand Total
+        // 5. Hitung Grand Total
         const grandTotal = totalHargaBarang + realOngkir;
         console.log(`💰 Total Tagihan: Rp ${grandTotal}`);
 
@@ -203,25 +229,25 @@ const resolvers = {
         // realOngkir, ...
 
         // --- LANJUTAN KODE STANDAR (UNTUK MEMUDAHKAN COPY PASTE) ---
-        // 4. Minta VA
-        const vaRes = await axios.post('${process.env.LOGISTICS_URL}/graphql', {
+        // 6. Minta VA
+        const vaRes = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
           query: `mutation { createVA(userId: "user-1", amount: ${grandTotal}) { vaNumber } }`
         });
         const vaNumber = vaRes.data.data.createVA.vaNumber;
 
-        // 5. Simulasi Bayar
-        const checkPayRes = await axios.post('${process.env.LOGISTICS_URL}/graphql', {
+        // 7. Simulasi Bayar
+        const checkPayRes = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
           query: `mutation { checkPaymentStatus(vaNumber: "${vaNumber}") }`
         });
         if (checkPayRes.data.data.checkPaymentStatus !== 'SUCCESS') throw new Error("Pembayaran Gagal");
 
-        // 6. Minta Resi
-        const resiRes = await axios.post('${process.env.LOGISTICS_URL}/graphql', {
+        // 8. Minta Resi
+        const resiRes = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
             query: `mutation { createResi(service: "${input.metodePengiriman}", asal: "${GUDANG_ADDRESS}", tujuan: "${input.alamatPengiriman}", berat: ${totalBerat}) }`
         });
         const nomorResi = resiRes.data.data.createResi;
 
-        // 7. Simpan Transaksi
+        // 9. Simpan Transaksi
         const orderId = await new Promise((resolve, reject) => {
           db.run(
             `INSERT INTO orders (

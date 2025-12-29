@@ -35,5 +35,15 @@ export const productClient = new ApolloClient({
   cache: new InMemoryCache(),
 })
 
+// Order Service Client (for orders) - also needs auth
+const orderServiceLink = authLink.concat(createHttpLink({
+  uri: 'http://localhost:7003/graphql',
+}))
+
+export const orderClient = new ApolloClient({
+  link: orderServiceLink,
+  cache: new InMemoryCache(),
+})
+
 // Default client (for backward compatibility - points to user service)
 export const apolloClient = userClient

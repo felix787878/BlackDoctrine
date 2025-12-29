@@ -109,10 +109,12 @@ const typeDefs = gql`
   type Query {
     getProducts: [Product!]!
     getProduct(id: ID!): Product
+    searchProducts(keyword: String, category: String): [Product!]!
   }
 
   type Mutation {
     addProduct(input: ProductInput!): Product!
+    decreaseStock(productId: ID!, quantity: Int!): Boolean!
   }
 `;
 
@@ -141,8 +143,51 @@ const resolvers = {
       if (!row) return null;
       return mapDbToGraphQL(row);
     },
+    searchProducts: async (_, { keyword, category }) => {
+      let query = 'SELECT * FROM products WHERE 1=1';
+      const params = [];
+
+      // Filter by keyword (search in name and description)
+      if (keyword && keyword.trim() !== '') {
+        query += ' AND (name LIKE ? OR description LIKE ?)';
+        const searchTerm = `%${keyword.trim()}%`;
+        params.push(searchTerm, searchTerm);
+      }
+
+      // Filter by category
+      if (category && category.trim() !== '') {
+        query += ' AND category = ?';
+        params.push(category.trim());
+      }
+
+      query += ' ORDER BY created_at DESC';
+
+      const rows = await dbAll(query, params);
+      return rows.map(mapDbToGraphQL);
+    },
   },
   Mutation: {
+    decreaseStock: async (_, { productId, quantity }) => {
+      // Get current stock
+      const product = await dbGet('SELECT * FROM products WHERE id = ?', [parseInt(productId)]);
+      
+      if (!product) {
+        throw new Error('Produk tidak ditemukan');
+      }
+
+      // Check if stock is sufficient
+      if (product.stock_quantity < quantity) {
+        throw new Error(`Stok tidak cukup. Tersedia: ${product.stock_quantity} unit, Diminta: ${quantity} unit`);
+      }
+
+      // Decrease stock
+      await dbRun(
+        'UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?',
+        [quantity, parseInt(productId)]
+      );
+
+      return true;
+    },
     addProduct: async (_, { input }) => {
       // Generate SKU otomatis jika tidak diinput (format: SKU-UnixTimestamp)
       let sku = input.sku;

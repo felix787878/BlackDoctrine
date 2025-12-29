@@ -15,6 +15,34 @@ export const GET_PRODUCTS = gql`
   }
 `
 
+export const GET_PRODUCT = gql`
+  query GetProduct($id: ID!) {
+    getProduct(id: $id) {
+      id
+      namaProduk
+      harga
+      stok
+      berat
+      description
+      category
+    }
+  }
+`
+
+export const SEARCH_PRODUCTS = gql`
+  query SearchProducts($keyword: String, $category: String) {
+    searchProducts(keyword: $keyword, category: $category) {
+      id
+      namaProduk
+      harga
+      stok
+      berat
+      description
+      category
+    }
+  }
+`
+
 export const ADD_PRODUCT = gql`
   mutation AddProduct($input: ProductInput!) {
     addProduct(input: $input) {
@@ -181,5 +209,18 @@ export const CHANGE_PASSWORD = gql`
 export const SOFT_DELETE_ACCOUNT = gql`
   mutation SoftDeleteAccount {
     softDeleteAccount
+  }
+`
+
+export const CREATE_ORDER = gql`
+  mutation CreateOrder($input: CreateOrderInput!) {
+    createOrder(input: $input) {
+      id
+      status
+      totalHarga
+      alamatPengiriman
+      metodePengiriman
+      ongkir
+    }
   }
 `

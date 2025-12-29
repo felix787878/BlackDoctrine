@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate, useParams, Link } from 'react-router-dom'
-import { useQuery } from '@apollo/client'
+import { useQuery, useMutation } from '@apollo/client'
 import { useAuth } from '../context/AuthContext'
-import { GET_MY_ADDRESSES } from '../graphql/queries'
-import { userClient } from '../graphql/apolloClient'
+import { GET_MY_ADDRESSES, CREATE_ORDER, GET_PRODUCT } from '../graphql/queries'
+import { userClient, orderClient, productClient } from '../graphql/apolloClient'
 import toast from 'react-hot-toast'
 
 export default function ProductDetail() {
@@ -14,9 +14,22 @@ export default function ProductDetail() {
 
   // State untuk form
   const [quantity, setQuantity] = useState(1)
-  const [isLoading, setIsLoading] = useState(false)
   const [showAddressModal, setShowAddressModal] = useState(false)
   const [selectedAddress, setSelectedAddress] = useState(null)
+  
+  // Query product data untuk mendapatkan stok terbaru
+  const productId = id || state?.product?.id
+  const { data: productData, refetch: refetchProduct } = useQuery(GET_PRODUCT, {
+    client: productClient,
+    variables: { id: productId },
+    skip: !productId,
+    fetchPolicy: 'cache-and-network', // Always fetch fresh data
+  })
+  
+  // Mutation untuk create order
+  const [createOrder, { loading: isCreatingOrder }] = useMutation(CREATE_ORDER, {
+    client: orderClient,
+  })
 
   // Query addresses
   const { data: addressesData } = useQuery(GET_MY_ADDRESSES, {
@@ -83,8 +96,15 @@ export default function ProductDetail() {
     )
   }
 
-  // Data produk dari state
-  const product = state.product
+  // Data produk: prioritaskan dari query (stok terbaru), fallback ke state
+  const product = productData?.getProduct || state?.product
+  
+  // Update quantity jika stok berubah (misalnya setelah refetch)
+  useEffect(() => {
+    if (product && product.stok !== undefined && quantity > product.stok) {
+      setQuantity(Math.max(1, product.stok))
+    }
+  }, [product?.stok]) // Hanya trigger saat stok berubah, bukan quantity
 
   // Format harga
   const formatPrice = (price) => {
@@ -95,11 +115,28 @@ export default function ProductDetail() {
     }).format(price)
   }
 
-  // Handle perubahan quantity
+  // Handle perubahan quantity dengan validasi stok
   const handleQuantityChange = (delta) => {
     const newQuantity = quantity + delta
-    if (newQuantity >= 1 && newQuantity <= (product.stok || 999)) {
+    const maxStock = product.stok || 0
+    if (newQuantity >= 1 && newQuantity <= maxStock) {
       setQuantity(newQuantity)
+    } else if (newQuantity > maxStock) {
+      toast.error(`Maksimal ${maxStock} unit (stok tersedia)`)
+    }
+  }
+  
+  // Update quantity saat input manual
+  const handleQuantityInput = (e) => {
+    const val = parseInt(e.target.value) || 1
+    const maxStock = product.stok || 0
+    if (val >= 1 && val <= maxStock) {
+      setQuantity(val)
+    } else if (val > maxStock) {
+      toast.error(`Maksimal ${maxStock} unit (stok tersedia)`)
+      setQuantity(maxStock)
+    } else {
+      setQuantity(1)
     }
   }
 
@@ -119,56 +156,54 @@ export default function ProductDetail() {
       return
     }
 
-    setIsLoading(true)
+    // Validasi stok
+    if (product.stok < quantity) {
+      toast.error(`Stok tidak cukup. Tersedia: ${product.stok} unit`)
+      return
+    }
+
+    if (quantity <= 0) {
+      toast.error('Jumlah pembelian harus lebih dari 0')
+      return
+    }
 
     try {
-      const mutation = `
-        mutation CreateOrder {
-          createOrder(input: {
-            productId: "${product.id}",
-            quantity: ${quantity},
-            alamatPengiriman: "${formattedAddress.replace(/"/g, '\\"')}",
-            alamatPenjemputan: "Gudang Pusat Black Market"
-          }) {
-            id
-            status
-            totalHarga
+      const result = await createOrder({
+        variables: {
+          input: {
+            productId: product.id,
+            quantity: quantity,
+            alamatPengiriman: formattedAddress,
+            metodePengiriman: 'REGULER', // Default metode pengiriman
           }
         }
-      `
-
-      const response = await fetch('http://localhost:4001/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: mutation,
-        }),
       })
 
-      if (!response.ok) {
-        throw new Error('Network response was not ok')
-      }
-
-      const result = await response.json()
-
-      if (result.errors) {
-        console.error('GraphQL Error:', result.errors)
-        toast.error(`Error: ${result.errors[0].message}`)
-      } else if (result.data && result.data.createOrder) {
+      if (result.data?.createOrder) {
         const order = result.data.createOrder
         toast.success(
           `Order Berhasil! ID: ${order.id}, Status: ${order.status}, Total: ${formatPrice(order.totalHarga)}`
         )
-      } else {
-        throw new Error('Unexpected response format')
+        
+        // Refetch product data untuk mendapatkan stok terbaru
+        if (id || state?.product?.id) {
+          const { data: updatedProductData } = await refetchProduct()
+          const updatedProduct = updatedProductData?.getProduct
+          
+          // Adjust quantity berdasarkan stok baru
+          if (updatedProduct) {
+            const newStock = updatedProduct.stok
+            if (newStock <= 0) {
+              setQuantity(1)
+            } else if (quantity > newStock) {
+              setQuantity(newStock)
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Error creating order:', error)
-      toast.error(`Gagal membuat order: ${error.message}`)
-    } finally {
-      setIsLoading(false)
+      toast.error(error.message || 'Gagal membuat order')
     }
   }
 
@@ -256,8 +291,16 @@ export default function ProductDetail() {
           </div>
 
           {/* Info Stok */}
-          <div className="text-sm text-gray-600">
-            <span className="font-medium">Stok tersedia:</span> {product.stok || 0} unit
+          <div className={`p-4 rounded-lg ${product.stok > 0 ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <p className={`text-lg font-semibold ${product.stok > 0 ? 'text-green-800' : 'text-red-800'}`}>
+              <span className="font-medium">Stok tersedia:</span> {product.stok || 0} unit
+            </p>
+            {product.stok === 0 && (
+              <p className="text-sm text-red-600 mt-1">Produk sedang habis</p>
+            )}
+            {product.stok > 0 && product.stok < 10 && (
+              <p className="text-sm text-yellow-600 mt-1">Stok terbatas!</p>
+            )}
           </div>
         </div>
 
@@ -282,20 +325,15 @@ export default function ProductDetail() {
                 <input
                   type="number"
                   min="1"
-                  max={product.stok || 999}
+                  max={product.stok || 0}
                   value={quantity}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value) || 1
-                    const maxStock = product.stok || 999
-                    if (val >= 1 && val <= maxStock) {
-                      setQuantity(val)
-                    }
-                  }}
-                  className="w-20 text-center text-2xl font-semibold border-2 border-gray-300 rounded-lg py-2 focus:outline-none focus:border-primary-600"
+                  onChange={handleQuantityInput}
+                  disabled={product.stok === 0}
+                  className="w-20 text-center text-2xl font-semibold border-2 border-gray-300 rounded-lg py-2 focus:outline-none focus:border-primary-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 />
                 <button
                   onClick={() => handleQuantityChange(1)}
-                  disabled={quantity >= (product.stok || 999)}
+                  disabled={quantity >= (product.stok || 0) || product.stok === 0}
                   className="w-12 h-12 rounded-lg border-2 border-gray-300 flex items-center justify-center font-bold text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   +
@@ -430,14 +468,14 @@ export default function ProductDetail() {
             {/* Tombol Beli */}
             <button
               className={`w-full py-4 text-lg font-semibold rounded-lg transition-all ${
-                isFormValid && !isLoading && isStockAvailable
+                isFormValid && !isCreatingOrder && isStockAvailable && quantity > 0
                   ? 'btn-primary'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
               onClick={handleBuy}
-              disabled={!isFormValid || isLoading || !isStockAvailable}
+              disabled={!isFormValid || isCreatingOrder || !isStockAvailable || quantity <= 0}
             >
-              {isLoading ? 'Processing...' : 'Beli Sekarang'}
+              {isCreatingOrder ? 'Memproses...' : 'Beli Sekarang'}
             </button>
 
             {!isStockAvailable && (
