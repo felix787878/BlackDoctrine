@@ -1,8 +1,12 @@
 version: '3.8'
 
 services:
+  # ------------------------------------------------------------
+  # 1. USER SERVICE (Port 7001)
+  # ------------------------------------------------------------
   user-service:
     build: ./user-service
+    container_name: marketplace-user-service # Diganti agar tidak bentrok dengan project lain
     ports:
       - "7001:7001"
     volumes:
@@ -13,8 +17,12 @@ services:
       - JWT_SECRET=pasaribu
       - PORT=7001
 
+  # ------------------------------------------------------------
+  # 2. PRODUCT SERVICE (Port 7002)
+  # ------------------------------------------------------------
   product-service:
     build: ./product-service
+    container_name: product-service
     ports:
       - "7002:7002"
     volumes:
@@ -24,21 +32,12 @@ services:
       - NODE_ENV=development
       - PORT=7002
 
-  order-service:
-    build: ./order-service
-    ports:
-      - "7003:7003"
-    volumes:
-      - ./order-service:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - PORT=7003
-      - PRODUCT_SERVICE_URL=http://product-service:7002/graphql
-      - LOGISTICS_URL=http://mock-server:7010/graphql
-
+  # ------------------------------------------------------------
+  # 3. MOCK SERVER (Port 7010 - Logistik & Payment)
+  # ------------------------------------------------------------
   mock-server:
     build: ./mock-server
+    container_name: mock-server
     ports:
       - "7010:7010"
     volumes:
@@ -48,8 +47,38 @@ services:
       - NODE_ENV=development
       - PORT=7010
 
+  # ------------------------------------------------------------
+  # 4. ORDER SERVICE (Port 7003 - Consumer Active)
+  # ------------------------------------------------------------
+  order-service:
+    build: ./order-service
+    container_name: order-service
+    ports:
+      - "7003:7003"
+    volumes:
+      - ./order-service:/app
+      - /app/node_modules
+    depends_on:
+      - product-service
+      - mock-server
+    environment:
+      - NODE_ENV=development
+      - PORT=7003
+      
+      # URL Service Internal (Product)
+      - PRODUCT_SERVICE_URL=http://product-service:7002/graphql
+      
+      # URL Service Eksternal (Mock Server saat ini)
+      # Pastikan nama variabel ENV ini SAMA PERSIS dengan di index.js order-service
+      - PAYMENT_SERVICE_URL=http://mock-server:7010/graphql
+      - LOGISTIC_SERVICE_URL=http://mock-server:7010/graphql
+
+  # ------------------------------------------------------------
+  # 5. FRONTEND (Port 7000)
+  # ------------------------------------------------------------
   ecommerce-frontend:
     build: ./ecommerce-frontend
+    container_name: ecommerce-frontend
     ports:
       - "7000:7000"
     volumes:
@@ -57,4 +86,8 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      # Note: Frontend Vite berjalan di browser (client-side).
+      # Jadi dia mengakses backend via "localhost" (port host), bukan nama container.
+      # Jika Anda ingin checkout, pastikan ini mengarah ke Order Service (7003)
+      # atau User Service (7001) tergantung konfigurasi Apollo Client Anda.
       - VITE_GRAPHQL_URL=http://localhost:7001/graphql
