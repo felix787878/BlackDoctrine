@@ -65,12 +65,12 @@ const typeDefs = gql`
   }
 
   # --- BAGIAN LOGISTIK (DIKOMENTARI) ---
-  # type ShippingOption {
-  #   service: String!
-  #   description: String!
-  #   ongkir: Float!
-  #   estimasi: String!
-  # }
+  type ShippingOption {
+    service: String!
+    description: String!
+    ongkir: Float!
+    estimasi: String!
+  }
 
   input CreateOrderInput {
     productId: String!
@@ -84,7 +84,7 @@ const typeDefs = gql`
     
     getOrderByVA(vaNumber: String!): Order
 
-    # getShippingOptions(alamatTujuan: String!, productId: String!, quantity: Int!): [ShippingOption!]!
+    getShippingOptions(alamatTujuan: String!, productId: String!, quantity: Int!): [ShippingOption!]!
   }
 
   type Mutation {
@@ -120,17 +120,17 @@ async function decreaseStock(productId, quantity) {
   }
 }
 
-// --- HELPER LOGISTIK (DIKOMENTARI) ---
-// async function fetchShippingOptions(alamatTujuan, totalBerat) {
-//   const res = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
-//     query: `query { 
-//       cekOpsiOngkir(asal: "${GUDANG_ADDRESS}", tujuan: "${alamatTujuan}", berat: ${totalBerat}) {
-//         service description ongkir estimasi
-//       } 
-//     }`
-//   });
-//   return res.data.data.cekOpsiOngkir;
-// }
+// Helper: Fetch Ongkir Options
+async function fetchShippingOptions(alamatTujuan, totalBerat) {
+  const res = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
+    query: `query { 
+      cekOpsiOngkir(asal: "${GUDANG_ADDRESS}", tujuan: "${alamatTujuan}", berat: ${totalBerat}) {
+        service description ongkir estimasi
+      } 
+    }`
+  });
+  return res.data.data.cekOpsiOngkir;
+}
 
 // Resolvers
 const resolvers = {
@@ -184,11 +184,24 @@ const resolvers = {
       };
     },
 
-    // --- RESOLVER LOGISTIK (DIKOMENTARI) ---
-    // getShippingOptions: async (_, { alamatTujuan, productId, quantity }) => {
-    //   // ... (Logic lama dikomentari) ...
-    //   return [];
-    // }
+    // --- RESOLVER LOGISTIK ---
+    getShippingOptions: async (_, { alamatTujuan, productId, quantity }) => {
+      console.log(`🔍 User cek ongkir ke: ${alamatTujuan}`);
+      // 1. Ambil berat real dari Product Service
+      const product = await fetchProduct(productId);
+      if (!product) throw new Error("Produk tidak ditemukan");
+      const totalBerat = product.berat * quantity;
+      // 2. Tembak Mock Logistik (Kirim alamat GUDANG sebagai asal)
+      const res = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
+        query: `query { 
+          cekOpsiOngkir(asal: "${GUDANG_ADDRESS}", tujuan: "${alamatTujuan}", berat: ${totalBerat}) {
+            service description ongkir estimasi
+          } 
+        }`
+      });
+      // 3. Kembalikan daftar opsi ke Frontend
+      return res.data.data.cekOpsiOngkir;
+    }
   },
 
   Mutation: {
@@ -218,41 +231,34 @@ const resolvers = {
         // 1. Validasi Produk & Stok
         const product = await fetchProduct(input.productId);
         if (product.stok < input.quantity) {
-          throw new Error(`Stok tidak cukup. Tersedia: ${product.stok}`);
+          throw new Error(`Stok tidak cukup. Tersedia: ${product.stok} unit, Diminta: ${input.quantity} unit`);
         }
         
         // 2. Kurangi stok
         await decreaseStock(input.productId, input.quantity);
         
         const totalHargaBarang = product.harga * input.quantity;
-        // const totalBerat = product.berat * input.quantity; // Dikomentari karena belum dipakai
+        const totalBerat = product.berat * input.quantity; // Dikomentari karena belum dipakai
 
-        // --- BAGIAN LOGISTIK (DIKOMENTARI) ---
-        // const options = await fetchShippingOptions(input.alamatPengiriman, totalBerat);
-        // const selectedOption = options.find(opt => opt.service === input.metodePengiriman);
-        // if (!selectedOption) throw new Error("Metode pengiriman tidak tersedia");
-        // const realOngkir = selectedOption.ongkir;
+        // --- BAGIAN LOGISTIK ---
+        // Panggil helper function baru
+        const options = await fetchShippingOptions(input.alamatPengiriman, totalBerat);
+        // Cari metode yang dipilih user di dalam list dari logistik
+        const selectedOption = options.find(opt => opt.service === input.metodePengiriman);
+        if (!selectedOption) {
+            throw new Error(`Metode pengiriman '${input.metodePengiriman}' tidak tersedia.`);
+        }
 
-        // --- PENGGANTI SEMENTARA (DUMMY) ---
-        const realOngkir = 15000; // Flat rate dummy agar codingan jalan
-        console.log(`ℹ️ Menggunakan Ongkir Dummy: Rp ${realOngkir}`);
+        const realOngkir = selectedOption.ongkir; // AMBIL HARGA DARI SINI
 
         // 3. Hitung Grand Total
         const grandTotal = totalHargaBarang + realOngkir;
         console.log(`💰 Total Tagihan: Rp ${grandTotal}`);
 
-        // --- BAGIAN GENERATE VA EKSTERNAL (DIKOMENTARI) ---
-        // const vaRes = await axios.post(...)
-        // const vaNumber = vaRes.data.data.createVA.vaNumber;
-
         // --- PENGGANTI SEMENTARA (INTERNAL GENERATE VA) ---
         // Format VA: "VA" + timestamp (unik)
         const vaNumber = "VA" + Date.now();
         console.log(`ℹ️ Generated Internal VA: ${vaNumber}`);
-
-        // --- BAGIAN RESI EKSTERNAL (DIKOMENTARI) ---
-        // const resiRes = await axios.post(...)
-        // const nomorResi = resiRes.data.data.createResi;
         
         const nomorResi = "-"; // Belum ada resi karena belum dibayar
 
