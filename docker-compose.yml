@@ -1,10 +1,12 @@
+version: '3.8'
+
 services:
   # ------------------------------------------------------------
-  # 1. USER SERVICE (Port 7001)
+  # 1. USER SERVICE
   # ------------------------------------------------------------
   user-service:
     build: ./user-service
-    container_name: marketplace-user-service # Diganti agar tidak bentrok dengan project lain
+    container_name: marketplace-user-service
     ports:
       - "7001:7001"
     volumes:
@@ -14,9 +16,10 @@ services:
       - NODE_ENV=development
       - JWT_SECRET=pasaribu
       - PORT=7001
+    # Tidak perlu setting networks lagi (otomatis default)
 
   # ------------------------------------------------------------
-  # 2. PRODUCT SERVICE (Port 7002)
+  # 2. PRODUCT SERVICE
   # ------------------------------------------------------------
   product-service:
     build: ./product-service
@@ -31,22 +34,7 @@ services:
       - PORT=7002
 
   # ------------------------------------------------------------
-  # 3. MOCK SERVER (Port 7010 - Logistik & Payment)
-  # ------------------------------------------------------------
-  mock-server:
-    build: ./mock-server
-    container_name: mock-server
-    ports:
-      - "7010:7010"
-    volumes:
-      - ./mock-server:/app
-      - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - PORT=7010
-
-  # ------------------------------------------------------------
-  # 4. ORDER SERVICE (Port 7003 - Consumer Active)
+  # 3. ORDER SERVICE (YANG KITA UBAH)
   # ------------------------------------------------------------
   order-service:
     build: ./order-service
@@ -58,21 +46,28 @@ services:
       - /app/node_modules
     depends_on:
       - product-service
-      - mock-server
+    
+    # Tambahan Khusus agar 'host.docker.internal' jalan di Linux juga
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     environment:
       - NODE_ENV=development
       - PORT=7003
       
-      # URL Service Internal (Product)
-      - PRODUCT_SERVICE_URL=http://product-service:7002/graphql
+      # KE SERVICE TEMAN (JALUR PINTAS)
+      # Gunakan host.docker.internal untuk mengakses localhost laptop Anda
+      # Port 8000 = Dompet Sawit
+      # Port 4000 = GoShip
+      - PAYMENT_SERVICE_URL=http://host.docker.internal:8000/graphql
+      - LOGISTIC_SERVICE_URL=http://host.docker.internal:4000/graphql
       
-      # URL Service Eksternal (Mock Server saat ini)
-      # Pastikan nama variabel ENV ini SAMA PERSIS dengan di index.js order-service
-      - PAYMENT_SERVICE_URL=http://mock-server:7010/graphql
-      - LOGISTIC_SERVICE_URL=http://mock-server:7010/graphql
+      # KE INTERNAL (TETAP SAMA)
+      # Karena satu file docker-compose, tetap panggil nama service-nya
+      - PRODUCT_SERVICE_URL=http://product-service:7002/graphql
 
   # ------------------------------------------------------------
-  # 5. FRONTEND (Port 7000)
+  # 4. FRONTEND
   # ------------------------------------------------------------
   ecommerce-frontend:
     build: ./ecommerce-frontend
@@ -84,8 +79,4 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      # Note: Frontend Vite berjalan di browser (client-side).
-      # Jadi dia mengakses backend via "localhost" (port host), bukan nama container.
-      # Jika Anda ingin checkout, pastikan ini mengarah ke Order Service (7003)
-      # atau User Service (7001) tergantung konfigurasi Apollo Client Anda.
       - VITE_GRAPHQL_URL=http://localhost:7001/graphql
