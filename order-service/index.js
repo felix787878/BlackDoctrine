@@ -3,8 +3,15 @@ import axios from 'axios';
 import sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 
-// HARDCODE: Alamat Gudang
-const GUDANG_ADDRESS = "Gudang Pusat Black Market, Jakarta Selatan";
+// --- KONFIGURASI INTEGRASI ---
+// URL Gateway Kelompok Lain (Sesuai Docker Compose)
+const PAYMENT_URL = process.env.PAYMENT_SERVICE_URL || 'http://api-gateway:8000/graphql'; 
+const LOGISTIC_URL = process.env.LOGISTIC_SERVICE_URL || 'http://goship_api_gateway:4000/graphql'; 
+const PRODUCT_URL = process.env.PRODUCT_SERVICE_URL || 'http://product-service:7002/graphql';
+
+// HARDCODE DATA INTEGRASI (Untuk Demo)
+const KOTA_ASAL_ID = "1"; // ID Gudang (Jakarta)
+const DEFAULT_WALLET_ID = "wallet-user-1"; // ID Wallet User di Dompet Sawit
 
 // Setup SQLite Database
 const db = new sqlite3.Database('./orders.db');
@@ -64,7 +71,6 @@ const typeDefs = gql`
     nomorResi: String
   }
 
-  # --- BAGIAN LOGISTIK (DIKOMENTARI) ---
   type ShippingOption {
     service: String!
     description: String!
@@ -76,6 +82,7 @@ const typeDefs = gql`
     productId: String!
     quantity: Int!
     alamatPengiriman: String!
+    kotaTujuanId: String!   
     metodePengiriman: String! 
   }
 
@@ -84,7 +91,7 @@ const typeDefs = gql`
     
     getOrderByVA(vaNumber: String!): Order
 
-    getShippingOptions(alamatTujuan: String!, productId: String!, quantity: Int!): [ShippingOption!]!
+    getShippingOptions(kotaTujuanId: String!, productId: String!, quantity: Int!): [ShippingOption!]!
   }
 
   type Mutation {
@@ -94,45 +101,110 @@ const typeDefs = gql`
   }
 `;
 
-// Helper: Fetch Product Data
+// --- HELPER FUNCTIONS ---
+
+// 1. Ambil Data Produk (Product Service)
 async function fetchProduct(productId) {
   try {
-    const res = await axios.post(`${process.env.PRODUCT_SERVICE_URL || 'http://localhost:7002'}/graphql`, {
+    const res = await axios.post(PRODUCT_URL, {
       query: `query { getProduct(id: "${productId}") { namaProduk harga berat stok } }`
     });
     if (res.data.errors) throw new Error(res.data.errors[0].message);
     return res.data.data.getProduct;
   } catch (err) {
-    throw new Error("Gagal mengambil data produk: " + err.message);
+    throw new Error("Product Service Error: " + err.message);
   }
 }
 
-// Helper: Decrease Stock
+// 2. Kurangi Stok (Product Service) - [DIKEMBALIKAN]
 async function decreaseStock(productId, quantity) {
   try {
-    const res = await axios.post(`${process.env.PRODUCT_SERVICE_URL || 'http://localhost:7002'}/graphql`, {
+    const res = await axios.post(PRODUCT_URL, {
       query: `mutation { decreaseStock(productId: "${productId}", quantity: ${quantity}) }`
     });
-    if (res.data.errors) throw new Error(res.data.errors[0].message);
+    if (res.data.errors) {
+      throw new Error(res.data.errors[0].message);
+    }
     return res.data.data.decreaseStock;
   } catch (err) {
     throw new Error("Gagal mengurangi stok: " + err.message);
   }
 }
 
-// Helper: Fetch Ongkir Options
-async function fetchShippingOptions(alamatTujuan, totalBerat) {
-  const res = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
-    query: `query { 
-      cekOpsiOngkir(asal: "${GUDANG_ADDRESS}", tujuan: "${alamatTujuan}", berat: ${totalBerat}) {
-        service description ongkir estimasi
-      } 
-    }`
-  });
-  return res.data.data.cekOpsiOngkir;
+// 3. Cek Ongkir (GoShip - Logistics)
+async function fetchGoShipOptions(kotaTujuanId, totalBerat) {
+  try {
+    const res = await axios.post(LOGISTIC_URL, {
+      query: `query { 
+        getShippingOptions(kotaAsal: "${KOTA_ASAL_ID}", kotaTujuan: "${kotaTujuanId}", berat: ${totalBerat}) {
+          metodePengiriman
+          hargaOngkir
+          estimasiHari
+        } 
+      }`
+    });
+    if (res.data.errors) throw new Error(res.data.errors[0].message);
+    return res.data.data.getShippingOptions;
+  } catch (err) {
+    console.error("GoShip Error:", err.response?.data || err.message);
+    throw new Error("Gagal mengambil ongkir dari GoShip");
+  }
 }
 
-// Resolvers
+// 4. Buat Transaksi (Dompet Sawit - Payment)
+async function createPaymentTransaction(amount) {
+  try {
+    const res = await axios.post(PAYMENT_URL, {
+      query: `mutation { 
+        createTransaction(input: {
+          walletId: "${DEFAULT_WALLET_ID}", 
+          amount: ${amount}, 
+          type: PAYMENT
+        }) {
+          transactionId
+          vaNumber
+          status
+        } 
+      }`
+    });
+    if (res.data.errors) throw new Error(res.data.errors[0].message);
+    return res.data.data.createTransaction;
+  } catch (err) {
+    console.error("Payment Error:", err.response?.data || err.message);
+    throw new Error("Gagal membuat transaksi di Dompet Sawit");
+  }
+}
+
+// 5. Request Resi/Pickup (GoShip - Logistics)
+async function createShipment(orderId, alamatTujuan, kotaTujuanId, berat, metode) {
+  try {
+    const res = await axios.post(LOGISTIC_URL, {
+      query: `mutation { 
+        createShipmentFromMarketplace(
+          orderId: "${orderId}",
+          alamatPengiriman: "${alamatTujuan}",
+          alamatPenjemputan: "Gudang Pusat Jakarta",
+          berat: ${berat},
+          kotaAsal: "${KOTA_ASAL_ID}",
+          kotaTujuan: "${kotaTujuanId}"
+        ) {
+          nomorResi
+          status
+          ongkir
+        } 
+      }`
+    });
+    if (res.data.errors) throw new Error(res.data.errors[0].message);
+    return res.data.data.createShipmentFromMarketplace;
+  } catch (err) {
+    console.error("GoShip Create Shipment Error:", err.response?.data || err.message);
+    // Return dummy agar tidak crash total jika logistik error
+    return { nomorResi: "PENDING-RESI-ERROR", status: "MANUAL_CHECK" };
+  }
+}
+
+// -- RESOLVERS --
+
 const resolvers = {
   Query: {
     getOrders: async () => {
@@ -185,44 +257,16 @@ const resolvers = {
     },
 
     // --- RESOLVER LOGISTIK ---
-    getShippingOptions: async (_, { alamatTujuan, productId, quantity }) => {
-      console.log(`🔍 User cek ongkir ke: ${alamatTujuan}`);
-      // 1. Ambil berat real dari Product Service
+    getShippingOptions: async (_, { kotaTujuanId, productId, quantity }) => {
+      console.log(`🔍 Cek Ongkir GoShip ke Kota ID: ${kotaTujuanId}`);
       const product = await fetchProduct(productId);
-      if (!product) throw new Error("Produk tidak ditemukan");
       const totalBerat = product.berat * quantity;
-      // 2. Tembak Mock Logistik (Kirim alamat GUDANG sebagai asal)
-      const res = await axios.post(`${process.env.LOGISTICS_URL || 'http://localhost:7010'}/graphql`, {
-        query: `query { 
-          cekOpsiOngkir(asal: "${GUDANG_ADDRESS}", tujuan: "${alamatTujuan}", berat: ${totalBerat}) {
-            service description ongkir estimasi
-          } 
-        }`
-      });
-      // 3. Kembalikan daftar opsi ke Frontend
-      return res.data.data.cekOpsiOngkir;
+      
+      return await fetchGoShipOptions(kotaTujuanId, totalBerat);
     }
   },
 
   Mutation: {
-    // --- RESOLVER BARU: UPDATE PAYMENT DARI TRANSACTIONS SERVICE ---
-    updatePaymentStatus: async (_, { vaNumber, status }) => {
-      console.log(`💰 External Update: VA ${vaNumber} menjadi status ${status}`);
-      try {
-        const order = await dbGet('SELECT * FROM orders WHERE va_number = ?', [vaNumber]);
-        if (!order) return false;
-
-        // Update status menjadi PAID / PROCESSED
-        await dbRun(
-          'UPDATE orders SET status = ?, payment_status = ? WHERE va_number = ?', 
-          ['PROCESSED', 'PAID', vaNumber]
-        );
-        return true;
-      } catch (err) {
-        console.error("Gagal update status:", err);
-        return false;
-      }
-    },
 
     createOrder: async (_, { input }) => {
       try {
@@ -241,15 +285,15 @@ const resolvers = {
         const totalBerat = product.berat * input.quantity; // Dikomentari karena belum dipakai
 
         // --- BAGIAN LOGISTIK ---
-        // Panggil helper function baru
-        const options = await fetchShippingOptions(input.alamatPengiriman, totalBerat);
-        // Cari metode yang dipilih user di dalam list dari logistik
-        const selectedOption = options.find(opt => opt.service === input.metodePengiriman);
+        const options = await fetchGoShipOptions(input.kotaTujuanId, totalBerat);
+        const selectedOption = options.find(opt => opt.metodePengiriman === input.metodePengiriman);
+        
         if (!selectedOption) {
-            throw new Error(`Metode pengiriman '${input.metodePengiriman}' tidak tersedia.`);
+            // Rollback stok jika ongkir invalid (Opsional, tapi idealnya ada)
+            throw new Error(`Metode pengiriman '${input.metodePengiriman}' tidak tersedia di GoShip.`);
         }
-
-        const realOngkir = selectedOption.ongkir; // AMBIL HARGA DARI SINI
+        const realOngkir = selectedOption.hargaOngkir;
+        console.log(`   ✅ Ongkir Valid: Rp ${realOngkir}`);
 
         // 3. Hitung Grand Total
         const grandTotal = totalHargaBarang + realOngkir;
@@ -257,10 +301,15 @@ const resolvers = {
 
         // --- PENGGANTI SEMENTARA (INTERNAL GENERATE VA) ---
         // Format VA: "VA" + timestamp (unik)
-        const vaNumber = "VA" + Date.now();
-        console.log(`ℹ️ Generated Internal VA: ${vaNumber}`);
+        // const vaNumber = "VA" + Date.now();
+        // console.log(`ℹ️ Generated Internal VA: ${vaNumber}`);
         
-        const nomorResi = "-"; // Belum ada resi karena belum dibayar
+        // const nomorResi = "-"; // Belum ada resi karena belum dibayar
+        // 4. Buat Transaksi di Dompet Sawit
+        console.log(`💳 Request Pembayaran ke Dompet Sawit...`);
+        const paymentData = await createPaymentTransaction(grandTotal);
+        const vaNumber = paymentData.vaNumber || "VA-PENDING"; 
+        console.log(`   ✅ VA Created: ${vaNumber}`);
 
         // 4. Simpan Transaksi ke DB
         const orderId = await new Promise((resolve, reject) => {
@@ -306,6 +355,25 @@ const resolvers = {
       } catch (error) {
         console.error('❌ Error:', error.message);
         throw new Error(error.message);
+      }
+    },
+
+    // --- RESOLVER BARU: UPDATE PAYMENT DARI TRANSACTIONS SERVICE ---
+    updatePaymentStatus: async (_, { vaNumber, status }) => {
+      console.log(`💰 External Update: VA ${vaNumber} menjadi status ${status}`);
+      try {
+        const order = await dbGet('SELECT * FROM orders WHERE va_number = ?', [vaNumber]);
+        if (!order) return false;
+
+        // Update status menjadi PAID / PROCESSED
+        await dbRun(
+          'UPDATE orders SET status = ?, payment_status = ? WHERE va_number = ?', 
+          ['PROCESSED', 'PAID', vaNumber]
+        );
+        return true;
+      } catch (err) {
+        console.error("Gagal update status:", err);
+        return false;
       }
     },
   },
