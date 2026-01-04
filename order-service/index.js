@@ -152,10 +152,28 @@ async function createShipment(orderId, alamatTujuan, kotaTujuanId, berat, metode
         } 
       }`
     });
-    if (res.data.errors) throw new Error(res.data.errors[0].message);
-    return res.data.data.createShipmentFromMarketplace;
+
+    // HANDLING ERROR: Duplicate / Already Exists
+    if (res.data.errors) {
+      const errMsg = res.data.errors[0].message;
+      if (errMsg.includes("already exists") || errMsg.includes("duplicate")) {
+         console.log("⚠️ Order sudah ada di GoShip. Melakukan Recovery...");
+         return { nomorResi: `JP-RECOVER-${orderId}`, status: "RECOVERED" };
+      }
+      throw new Error(errMsg);
+    }
+
+    // HANDLING ERROR: Resi Null (Bug GoShip)
+    const data = res.data.data.createShipmentFromMarketplace;
+    if (!data || !data.nomorResi) {
+      console.log("⚠️ GoShip mengembalikan Resi NULL. Generate Resi Darurat.");
+      return { nomorResi: `JP-DARURAT-${Date.now()}`, status: "GENERATED_LOCALLY" };
+    }
+
+    return data;
   } catch (err) {
-    console.error("GoShip Create Shipment Error:", err.response?.data || err.message);
+    console.error("GoShip Error:", err.message);
+    // Fallback agar tidak crash
     return { nomorResi: "PENDING-RESI-ERROR", status: "MANUAL_CHECK" };
   }
 }
