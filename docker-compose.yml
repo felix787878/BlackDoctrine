@@ -16,8 +16,6 @@ services:
       - NODE_ENV=development
       - JWT_SECRET=pasaribu
       - PORT=7001
-    # Tidak perlu setting networks lagi (otomatis default)
-
   # ------------------------------------------------------------
   # 2. PRODUCT SERVICE
   # ------------------------------------------------------------
@@ -55,15 +53,11 @@ services:
       - NODE_ENV=development
       - PORT=7003
       
-      # KE SERVICE TEMAN (JALUR PINTAS)
-      # Gunakan host.docker.internal untuk mengakses localhost laptop Anda
       # Port 8000 = Dompet Sawit
       # Port 4000 = GoShip
       - PAYMENT_SERVICE_URL=http://host.docker.internal:8000/graphql
       - LOGISTIC_SERVICE_URL=http://host.docker.internal:4000/graphql
       
-      # KE INTERNAL (TETAP SAMA)
-      # Karena satu file docker-compose, tetap panggil nama service-nya
       - PRODUCT_SERVICE_URL=http://product-service:7002/graphql
 
   # ------------------------------------------------------------
