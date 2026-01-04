@@ -10,16 +10,16 @@ mkdir TUGAS_BESAR_INTEGRASI
 cd TUGAS_BESAR_INTEGRASI
 ```
 ### 2. Clone Repository
-Clone ketiga repository kelompok Integrasi (**BlackDoctrine**, **TLKMSEL**, dan **GoShip**) ke dalam folder tersebut
+Clone ketiga repository kelompok Integrasi (**BlackDoctrine**, **TLKMSEL**, dan **Kata mamah harus dapat A**) ke dalam folder tersebut
 ```Bash
-# 1. Clone Repository BlackDoctrine (Marketplace)
-git clone [https://github.com/felix787878/BlackDoctrine.git](https://github.com/felix787878/BlackDoctrine.git)
+# 1. Clone Repository BlackDoctrine (Black Market)
+git clone https://github.com/felix787878/BlackDoctrine.git
 
 # 2. Clone Repository TLKMSEL (Dompet Digital Sawit)
-git clone [https://github.com/AAkmalAmran/Project-UAS-IAE_Dompet-Digital-Sawit.git](https://github.com/AAkmalAmran/Project-UAS-IAE_Dompet-Digital-Sawit.git)
+git clone https://github.com/AAkmalAmran/Project-UAS-IAE_Dompet-Digital-Sawit.git
 
-# 3. Clone Repository GoShip (Logistik)
-git clone [https://github.com/TopasAkbar/GoShip.git](https://github.com/TopasAkbar/GoShip.git)
+# 3. Clone Repository Kata mamah harus dapat A (Goship)
+git clone https://github.com/TopasAkbar/GoShip.git
 ```
 ### Struktur direktori yang diharapkan:
 ```Plaintext
@@ -169,3 +169,4 @@ mutation {
   }
 }
 ```
+
