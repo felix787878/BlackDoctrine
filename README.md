@@ -27,15 +27,15 @@ git clone https://github.com/TopasAkbar/GoShip.git
 │
 ├── /BlackDoctrine
 │     ├── docker-compose.yml
-│     └── src/
+│     └── src
 │
 ├── /Project-UAS-IAE_Dompet-Digital-Sawit
 │     ├── docker-compose.yml
-│     └── src/
+│     └── src
 │
 └── /GoShip
       ├── docker-compose.yml
-      └── src/
+      └── src
 ```
 ## Menjalankan Service
 
@@ -48,7 +48,7 @@ docker-compose up --build
 #### a. Persiapan Environment
 Buka terminal baru, masuk ke folder proyek, dan jalankan script setup:
 ```Bash
-cd ../Project-UAS-IAE_Dompet-Digital-Sawit
+cd Project-UAS-IAE_Dompet-Digital-Sawit
 python gsetup_env.py
 ```
 #### b. Generate RSA Keys
@@ -69,7 +69,7 @@ docker-compose up --build
 ### 4. Setup GoShip (Logistik)
 Buka terminal baru, masuk ke folder proyek, dan jalankan script setup:
 ```Bash
-cd ../GoShip
+cd GoShip
 docker-compose up --build
 ```
 
@@ -191,4 +191,5 @@ query LihatSemuaOrder {
   }
 }
 ```
+
 
