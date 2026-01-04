@@ -66,7 +66,7 @@ python generate_keys.py
 docker-compose up --build
 ```
 
-### 4. Setup GoShip (Logistik)
+### 4. Setup Kata mamah harus dapat A (Goship)
 Buka terminal baru, masuk ke folder proyek, dan jalankan script setup:
 ```Bash
 cd GoShip
@@ -191,5 +191,6 @@ query LihatSemuaOrder {
   }
 }
 ```
+
 
 
