@@ -125,6 +125,8 @@ mutation {
 >PENTING: Copy access_token dari respon Login. Masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL: `{"Authorization" : "Bearer <TOKEN_ANDA>"}`
 ### 3. Manajemen Wallet
 Pastikan Header Authorization masih terpasang. Buat dompet baru untuk user tersebut
+- Akses: http://localhost:8000/graphql
+- Aksi: Membuat dompet baru
 ```GraphQL
 mutation {
   createWallet(walletName: "Tabungan Utama") {
@@ -138,6 +140,8 @@ mutation {
 >PENTING: Copy walletId yang muncul pada respon untuk digunakan saat transaksi.
 ### 4. Pembayaran (Payment)
 Lakukan Top Up saldo terlebih dahulu, kemudian bayar tagihan dari Marketplace
+- Akses: http://localhost:8000/graphql
+- Aksi: Mengisi saldo dan bayar tagihan
 #### a. Top Up Saldo (Deposit)
 ```GraphQL
 mutation {
@@ -166,6 +170,24 @@ mutation {
     transactionId
     status
     vaNumber
+  }
+}
+```
+### 5. Check Perubahan Pada Order Setelah Pembayaran (Marketplace)
+- Akses: http://localhost:7003/ lalu klik "**Query your server**" untuk mengakses Studio Appolo GraphQL dan melakukan tes query GraphQL
+- Aksi: Jalankan query berikut melihat semua pesanan/order
+```GraphQL
+query LihatSemuaOrder {
+  getOrders {
+    id
+    productId
+    totalHarga
+    status
+    nomorVA
+    nomorResi
+    metodePengiriman
+    ongkir
+    quantity
   }
 }
 ```
