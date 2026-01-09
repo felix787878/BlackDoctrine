@@ -31,7 +31,7 @@ async function initDatabase() {
   const count = await dbGet('SELECT COUNT(*) as count FROM products');
   
   if (count.count === 0) {
-    console.log('📦 Seeding initial products...');
+    console.log('Seeding initial products...');
     
     const timestamp = Date.now();
     const seedProducts = [
@@ -80,7 +80,7 @@ async function initDatabase() {
       );
     }
     
-    console.log('✅ Seed data inserted successfully');
+    console.log('Seed data inserted successfully');
   }
 }
 
@@ -247,10 +247,10 @@ initDatabase()
     return server.listen({ port: PORT });
   })
   .then(({ url }) => {
-    console.log(`🚀 Product Service ready at ${url}`);
+    console.log(`Product Service ready at ${url}`);
   })
   .catch((error) => {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   })
 

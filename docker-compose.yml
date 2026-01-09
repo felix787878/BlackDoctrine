@@ -60,7 +60,7 @@ services:
       - PRODUCT_SERVICE_URL=http://product-service:7002/graphql
 
   # ------------------------------------------------------------
-  # 4. REVIEW SERVICE (SUDAH DISATUKAN)
+  # 4. REVIEW SERVICE
   # ------------------------------------------------------------
   review-service:
     build: ./review-service

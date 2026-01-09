@@ -35,7 +35,7 @@ const typeDefs = gql`
 const resolvers = {
   Query: {
     cekOpsiOngkir: (_, { asal, tujuan, berat }) => {
-      console.log(`🚚 [LOGISTIK] Cek rute: ${asal} -> ${tujuan} (${berat}g)`);
+      console.log(`[LOGISTIK] Cek rute: ${asal} -> ${tujuan} (${berat}g)`);
       
       // Simulasi logika harga pihak logistik
       const basePrice = Math.ceil(berat / 1000) * 5000;
@@ -52,17 +52,17 @@ const resolvers = {
     createVA: (_, { userId, amount }) => {
       // Payment Service generate nomor unik
       const va = `8800${Math.floor(Math.random() * 1000000000)}`;
-      console.log(`💳 [PAYMENT] Create VA User ${userId}: ${va} (Rp ${amount})`);
+      console.log(`[PAYMENT] Create VA User ${userId}: ${va} (Rp ${amount})`);
       return { vaNumber: va, amount, status: "PENDING" };
     },
     checkPaymentStatus: (_, { vaNumber }) => {
-      console.log(`💳 [PAYMENT] Cek Status VA: ${vaNumber}`);
+      console.log(`[PAYMENT] Cek Status VA: ${vaNumber}`);
       // Simulasi: Kita anggap user selalu berhasil bayar
       return "SUCCESS";
     },
     createResi: (_, { service }) => {
       const resi = `JP-${service}-${Math.floor(Math.random() * 10000)}`;
-      console.log(`🚚 [LOGISTIK] Cetak Resi (${service}): ${resi}`);
+      console.log(`[LOGISTIK] Cetak Resi (${service}): ${resi}`);
       return resi;
     }
   },
@@ -76,5 +76,5 @@ const server = new ApolloServer({
 
 const PORT = process.env.PORT || 7010;
 server.listen({ port: PORT }).then(({ url }) => {
-  console.log(`🚀 Mock Server (Logistik & Payment) ready at ${url}`);
+  console.log(`Mock Server (Logistik & Payment) ready at ${url}`);
 });
