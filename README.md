@@ -75,7 +75,23 @@ docker-compose up --build
 
 ## Simulasi Integrasi
 Berikut adalah skenario pengujian alur transaksi dari Checkout di Marketplace hingga Pembayaran di Dompet Digital.
-### 1. Checkout (Marketplace)
+### 1. Cek Ongkir (Marketplace)
+- Akses: http://localhost:7003/ lalu klik "**Query your server**" untuk mengakses Studio Appolo GraphQL dan melakukan tes query GraphQL
+- Aksi: Jalankan query berikut untuk melihat opsi pengiriman
+```GraphQL
+query CekOngkirMarketplace {
+  getShippingOptions(
+    productId: "1",       # Sistem akan cek berat produk ini ke Product Service
+    quantity: 1,          # Misal beli 2 barang (Berat otomatis dikali 2)
+    kotaTujuanId: "2"     # ID Kota Tujuan (Bandung)
+  ) {
+    metodePengiriman
+    hargaOngkir
+    estimasiHari
+  }
+}
+```
+### 2. Checkout (Marketplace)
 - Akses: http://localhost:7003/ lalu klik "**Query your server**" untuk mengakses Studio Appolo GraphQL dan melakukan tes query GraphQL
 - Aksi: Jalankan mutation berikut untuk membuat pesanan
 ```GraphQL
@@ -96,7 +112,7 @@ mutation Checkout {
   }
 }
 ```
-### 2. Autentikasi (Dompet Digital)
+### 3. Autentikasi (Dompet Digital)
 - Akses: Buka tab baru di http://localhost:8000/graphql
 - Aksi: Lakukan Register dan Login
 #### a. Register User
@@ -123,7 +139,7 @@ mutation {
 }
 ```
 >PENTING: Copy access_token dari respon Login. Masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL: `{"Authorization" : "Bearer <TOKEN_ANDA>"}`
-### 3. Manajemen Wallet
+### 4. Manajemen Wallet
 Pastikan Header Authorization masih terpasang. Buat dompet baru untuk user tersebut
 - Akses: http://localhost:8000/graphql
 - Aksi: Membuat dompet baru
@@ -138,7 +154,7 @@ mutation {
 }
 ```
 >PENTING: Copy walletId yang muncul pada respon untuk digunakan saat transaksi.
-### 4. Pembayaran (Payment)
+### 5. Pembayaran (Payment)
 Lakukan Top Up saldo terlebih dahulu, kemudian bayar tagihan dari Marketplace
 - Akses: http://localhost:8000/graphql
 - Aksi: Mengisi saldo dan bayar tagihan
@@ -173,7 +189,7 @@ mutation {
   }
 }
 ```
-### 5. Check Perubahan Pada Order Setelah Pembayaran (Marketplace)
+### 6. Check Perubahan Pada Order Setelah Pembayaran (Marketplace)
 - Akses: http://localhost:7003/ lalu klik "**Query your server**" untuk mengakses Studio Appolo GraphQL dan melakukan tes query GraphQL
 - Aksi: Jalankan query berikut melihat semua pesanan/order
 ```GraphQL
@@ -297,6 +313,7 @@ query {
 ##### - 
 ##### -
 ##### - 
+
 
 
 
