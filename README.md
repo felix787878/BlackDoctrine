@@ -192,5 +192,111 @@ query LihatSemuaOrder {
 }
 ```
 
+## Cara Tes Setiap Service Menggunakan GraphQL Playground
+
+Service ini menyediakan endpoint GraphQL untuk manajemen pengguna, autentikasi, dan buku alamat.
+
+### 1. User Service
+#### Query
+##### - Me
+Mengambil informasi pengguna yang sedang login (memerlukan token autentikasi)
+```GraphQL
+query {
+  me {
+    id
+    nama
+    email
+    role
+    isActive
+    statusLabel
+    avatarUrl
+  }
+}
+```
+##### - getUserProfile
+Mengambil profil lengkap pengguna berdasarkan ID tertentu (memerlukan autentikasi).
+Argument:
+- userId: ID dari user yang ingin dilihat.
+```GraphQL
+
+```
+##### -
+```GraphQL
+query GetUserProfile($userId: ID!) {
+  getUserProfile(userId: $userId) {
+    id
+    nama
+    email
+    role
+    profile {
+      full_name
+      phone_number
+      avatarUrl
+    }
+  }
+}
+```
+#### Mutation
+##### - Me
+```GraphQL
+
+```
+##### -
+```GraphQL
+
+```
+##### - myAddresses
+Mengambil daftar semua alamat yang tersimpan milik pengguna yang sedang login
+```GraphQL
+query {
+  myAddresses {
+    id
+    label
+    recipient_name
+    recipient_phone
+    street
+    city
+    province
+    is_primary
+  }
+}
+```
+### 2. Product Service
+#### Query
+##### - 
+##### -
+##### - 
+#### Mutation
+##### - 
+##### -
+##### - 
+### 3. Order Service
+#### Query
+##### - 
+##### -
+##### - 
+#### Mutation
+##### - 
+##### -
+##### - 
+### 4. Review Service
+#### Query
+##### - 
+##### -
+##### - 
+#### Mutation
+##### - 
+##### -
+##### - 
+### 5. Notification Service
+#### Query
+##### - 
+##### -
+##### - 
+#### Mutation
+##### - 
+##### -
+##### - 
+
 
 
