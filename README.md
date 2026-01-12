@@ -1,5 +1,13 @@
 # Marketplace Service (BlackDoctrine)
 
+## Tentang BlackDoctrine
+
+BlackDoctrine adalah sistem Marketplace berbasis Microservices dan GraphQL yang dirancang untuk mengelola transaksi e-commerce secara terdistribusi. Sistem ini terdiri dari 5 layanan (User, Product, Order, Review, Notification).
+
+Sistem ini bertindak sebagai pengelola yang mengintegrasikan layanan eksternal:
+
+- **GoShip (Logistik)**: Untuk kalkulasi ongkir real-time dan resi.
+- **Dompet Digital Sawit (Payment Gateway)**: Untuk pembayaran via Virtual Account.
 
 ## Cara Menjalankan Proyek Integrasi
 
@@ -237,9 +245,15 @@ query LihatSatuOrder($vaNumber: String!) {
 }
 ```
 ## GraphQL Service
-### 1. User Service 
+
+### 1. User Service
+
+**Akses:** http://localhost:7001/graphql
+
 #### Query
-- Lihat User Profile
+
+- **getUserProfile** - Mengambil detail data user yang sedang login.
+
 ```GraphQL
 query GetUserProfile($userId: ID!) {
   getUserProfile(userId: $userId) {
@@ -256,7 +270,8 @@ query GetUserProfile($userId: ID!) {
   }
 }
 ```
-- Me
+
+- **me** - Mengambil data profil user yang sedang login berdasarkan JWT Token di header.
 ```GraphQL
 query Me {
   me {
@@ -271,7 +286,7 @@ query Me {
   }
 }
 ```
-- MyAddresses
+- **myAddresses** - Mengambil daftar semua alamat pengiriman milik user yang sedang login.
 ```GraphQL
 query MyAddresses {
   myAddresses {
@@ -288,7 +303,8 @@ query MyAddresses {
 }
 ```
 #### Mutation
-- Register
+
+- **register** - Mendaftarkan akun pengguna baru ke dalam sistem dengan enkripsi password.
 ```GraphQL
 mutation Register($nama: String!, $email: String!, $password: String!) {
   register(nama: $nama, email: $email, password: $password) {
@@ -311,7 +327,7 @@ Contoh isi JSON:
   "password": "test"
 }
 ```
-- Login
+- **login** - Melakukan autentikasi dan mengembalikan JWT Token (Wajib di-copy ke Header Authorization).
 ```GraphQL
 mutation Login($email: String!, $password: String!) {
   login(email: $email, password: $password) {
@@ -336,7 +352,7 @@ Contoh isi JSON:
   "password": "test"
 }
 ```
-- AddAddress
+- **addAddress** - Menambahkan alamat pengiriman baru untuk kalkulasi ongkir.
 ```GraphQL
 mutation AddAddress($label: String!, $recipientName: String!, $street: String!, $city: String!, $province: String!, $recipientPhone: String) {
   addAddress(label: $label, recipientName: $recipientName, street: $street, city: $city, province: $province, recipientPhone: $recipientPhone) {
@@ -363,7 +379,8 @@ Contoh isi JSON:
   "recipientPhone": "12345"
 }
 ```
-- SetPrimaryAddress
+- **setPrimaryAddress** - Menetapkan spesifik alamat sebagai alamat utama (default) untuk pengiriman.
+
 ```GraphQL
 mutation SetPrimaryAddress($setPrimaryAddressId: ID!) {
   setPrimaryAddress(id: $setPrimaryAddressId) {
@@ -385,9 +402,11 @@ Contoh isi JSON:
   "setPrimaryAddressId": "2"
 }
 ```
-- SetPrimaryAddress
+
+- **updateAddress** - Memutakhirkan detail alamat (nama penerima, jalan, dll) tanpa mengubah ID alamat.
+
 ```GraphQL
-mutation SetPrimaryAddress($updateAddressId: ID!, $label: String!, $recipientName: String!, $street: String!, $city: String!, $province: String!) {
+mutation UpdateAddress($updateAddressId: ID!, $label: String!, $recipientName: String!, $street: String!, $city: String!, $province: String!) {
   updateAddress(id: $updateAddressId, label: $label, recipientName: $recipientName, street: $street, city: $city, province: $province) {
     id
     user_id
@@ -412,7 +431,7 @@ Contoh isi JSON:
   "province": "Jawa Barat"
 }
 ```
-- DeleteAddress
+- **deleteAddress** - Menghapus data alamat (dengan validasi tidak bisa menghapus jika hanya sisa satu).
 ```GraphQL
 mutation DeleteAddress($deleteAddressId: ID!) {
   deleteAddress(id: $deleteAddressId)
@@ -424,7 +443,7 @@ Contoh isi JSON:
   "deleteAddressId": "2"
 }
 ```
-- UpdateProfile
+- **updateProfile** - Memperbarui data profil dasar (nama, email, no hp).
 ```GraphQL
 mutation UpdateProfile($nama: String, $email: String, $phoneNumber: String) {
   updateProfile(nama: $nama, email: $email, phoneNumber: $phoneNumber) {
@@ -447,7 +466,7 @@ Contoh isi JSON:
   "phoneNumber": "08123456789"
 }
 ```
-- ChangePassword
+- **changePassword** - Mengubah kata sandi dengan validasi password lama.
 ```GraphQL
 mutation ChangePassword($oldPass: String!, $newPass: String!) {
   changePassword(oldPass: $oldPass, newPass: $newPass)
@@ -460,13 +479,13 @@ Contoh isi JSON:
   "newPass": "alta"
 }
 ```
-- softDeleteAccount
+- **softDeleteAccount** - Menonaktifkan akun sementara tanpa menghapus riwayat data.
 ```GraphQL
 mutation softDeleteAccount {
   softDeleteAccount
 }
 ```
-- AdminRestoreUser
+- **adminRestoreUser** - (Admin) Mengaktifkan kembali akun yang sudah dinonaktifkan.
 ```GraphQL
 mutation AdminRestoreUser($userId: ID!) {
   adminRestoreUser(userId: $userId) {
@@ -488,8 +507,28 @@ Contoh isi JSON:
 }
 ```
 ### 2. Product Service
+
+**Akses:** http://localhost:7002/graphql
+
 #### Query
-- GetProduct
+
+- **getProducts** - Menampilkan katalog produk lengkap.
+
+```GraphQL
+query GetProducts {
+  getProducts {
+    id
+    namaProduk
+    harga
+    stok
+    berat
+    description
+    category
+  }
+}
+```
+
+- **getProduct** - Mengambil detail satu produk (termasuk stok dan berat dalam gram).
 ```GraphQL
 query GetProduct($getProductId: ID!) {
   getProduct(id: $getProductId) {
@@ -509,21 +548,7 @@ Contoh isi JSON:
   "getProductId": "1"
 }
 ```
-- GetProducts
-```GraphQL
-query GetProducts {
-  getProducts {
-    id
-    namaProduk
-    harga
-    stok
-    berat
-    description
-    category
-  }
-}
-```
-- SearchProducts
+- **searchProducts** - Mencari produk berdasarkan keyword dan kategori.
 ```GraphQL
 query SearchProducts($keyword: String, $category: String) {
   searchProducts(keyword: $keyword, category: $category) {
@@ -545,7 +570,8 @@ Contoh isi JSON:
 }
 ```
 #### Mutation
-- AddProduct
+
+- **addProduct** - (Admin) Menambah stok barang dagangan ke inventaris.
 ```GraphQL
 mutation AddProduct($input: ProductInput!) {
   addProduct(input: $input) {
@@ -571,7 +597,7 @@ Contoh isi JSON:
   }
 }
 ```
-- DecreaseStock
+- **decreaseStock** - (Internal System) Mengurangi stok otomatis saat terjadi Checkout.
 ```GraphQL
 mutation DecreaseStock($productId: ID!, $quantity: Int!) {
   decreaseStock(productId: $productId, quantity: $quantity)
@@ -585,8 +611,12 @@ Contoh isi JSON:
 }
 ```
 ### 3. Order Service
+
+**Akses:** http://localhost:7003/graphql
+
 #### Query
-- GetOrders
+
+- **getOrders** - Menampilkan daftar semua pesanan yang pernah dibuat.
 ```GraphQL
 query GetOrders {
   getOrders {
@@ -604,7 +634,7 @@ query GetOrders {
   }
 }
 ```
-- GetOrderByVA
+- **getOrderByVA** - Melacak status order via nomor Virtual Account.
 ```GraphQL
 query GetOrderByVA($vaNumber: String!) {
   getOrderByVA(vaNumber: $vaNumber) {
@@ -628,7 +658,7 @@ Contoh isi JSON:
   "vaNumber": "BM-1767718314368" // Nomor VA disesuaikan dengan nomor VA yang dimiliki
 }
 ```
-- GetShippingOptions
+- **getShippingOptions** - **[INTEGRASI]** Menghubungi GoShip untuk cek ongkir berdasarkan berat total & kota tujuan.
 ```GraphQL
 query GetShippingOptions($kotaTujuanId: String!, $productId: String!, $quantity: Int!) {
   getShippingOptions(kotaTujuanId: $kotaTujuanId, productId: $productId, quantity: $quantity) {
@@ -647,7 +677,8 @@ Contoh isi JSON:
 }
 ```
 #### Mutation
-- CreateOrder
+
+- **createOrder** - **[INTEGRASI]** Proses Checkout. Mengurangi stok lokal, menyimpan order, dan menghubungi Payment Gateway untuk minta Nomor VA.
 ```GraphQL
 mutation CreateOrder($input: CreateOrderInput!) {
   createOrder(input: $input) {
@@ -677,7 +708,7 @@ Contoh isi JSON:
   }
 }
 ```
-- UpdatePaymentStatus
+- **updatePaymentStatus** - **[CALLBACK]** Webhook dari Payment Gateway saat bayar sukses. Otomatis request Resi ke GoShip.
 ```GraphQL
 mutation UpdatePaymentStatus($vaNumber: String!, $status: String!) {
   updatePaymentStatus(vaNumber: $vaNumber, status: $status)
@@ -691,8 +722,12 @@ Contoh isi JSON:
 }
 ```
 ### 4. Review Service
+
+**Akses:** http://localhost:7004/graphql
+
 #### Query
-- GetReview
+
+- **getReview** - Mengambil detail satu ulasan berdasarkan ID review.
 ```GraphQL
 query GetReview($getReviewId: ID!) {
   getReview(id: $getReviewId) {
@@ -711,7 +746,7 @@ Contoh isi JSON:
   "getReviewId": "1", // ID disesuaikan
 }
 ```
-- GetReviews
+- **getReviews** - Menampilkan list ulasan produk.
 ```GraphQL
 query GetReviews($productId: ID!) {
   getReviews(productId: $productId) {
@@ -731,7 +766,8 @@ Contoh isi JSON:
 }
 ```
 #### Mutation
-- CreateReview
+
+- **createReview** - Memberikan rating & komentar produk yang sudah dibeli.
 ```GraphQL
 mutation CreateReview($input: CreateReviewInput!) {
   createReview(input: $input) {
@@ -755,7 +791,7 @@ Contoh isi JSON:
   }
 }
 ```
-- DeleteReview
+- **deleteReview** - Menghapus ulasan yang sudah dibuat. User hanya dapat menghapus ulasan miliknya sendiri.
 ```GraphQL
 mutation DeleteReview($deleteReviewId: ID!) {
   deleteReview(id: $deleteReviewId)
@@ -767,7 +803,7 @@ Contoh isi JSON:
   "deleteReviewId": "5" // ID disesuaikan
 }
 ```
-- UpdateReview
+- **updateReview** - Memperbarui ulasan yang sudah dibuat sebelumnya. User dapat mengubah rating dan komentar untuk ulasan miliknya.
 ```GraphQL
 mutation UpdateReview($updateReviewId: ID!, $input: UpdateReviewInput!) {
   updateReview(id: $updateReviewId, input: $input) {
@@ -791,8 +827,12 @@ Contoh isi JSON:
 }
 ```
 ### 5. Notification Service
+
+**Akses:** http://localhost:7005/graphql
+
 #### Query
-- 
+
+- **getUserNotifications** - Melihat notifikasi sistem (misal: status pembayaran).
 ```GraphQL
 query GetUserNotifications($userId: Int!) {
   getUserNotifications(userId: $userId) {
@@ -812,7 +852,8 @@ Contoh isi JSON:
 }
 ```
 #### Mutation
-- SendNotification
+
+- **sendNotification** - (Internal System) Mengirim pesan real-time antar service.
 ```GraphQL
 mutation SendNotification($userId: Int!, $message: String!, $type: String) {
   sendNotification(userId: $userId, message: $message, type: $type) {
@@ -833,7 +874,7 @@ Contoh isi JSON:
   "type": "test",
 }
 ```
-- MarkAsRead
+- **markAsRead** - Menandai notifikasi sebagai sudah dibaca. Setelah ditandai, notifikasi tidak akan muncul lagi sebagai unread.
 ```GraphQL
 mutation MarkAsRead($markAsReadId: ID!) {
   markAsRead(id: $markAsReadId)
