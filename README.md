@@ -489,18 +489,100 @@ Contoh isi JSON:
 ```
 ### 2. Product Service
 #### Query
-- 
+- GetProduct
 ```GraphQL
-
-```
-#### Mutation
-- 
-```GraphQL
-
+query GetProduct($getProductId: ID!) {
+  getProduct(id: $getProductId) {
+    id
+    namaProduk
+    harga
+    stok
+    berat
+    description
+    category
+  }
+}
 ```
 Contoh isi JSON:
 ```JSON
+{
+  "getProductId": "1"
+}
+```
+- GetProducts
+```GraphQL
+query GetProducts {
+  getProducts {
+    id
+    namaProduk
+    harga
+    stok
+    berat
+    description
+    category
+  }
+}
+```
+- SearchProducts
+```GraphQL
+query SearchProducts($keyword: String, $category: String) {
+  searchProducts(keyword: $keyword, category: $category) {
+    id
+    namaProduk
+    harga
+    stok
+    berat
+    description
+    category
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "keyword": "Macbook Pro",
+  "category": "Komputer"
+}
+```
+#### Mutation
+- AddProduct
+```GraphQL
+mutation AddProduct($input: ProductInput!) {
+  addProduct(input: $input) {
+    id
+    namaProduk
+    harga
+    stok
+    berat
+    description
+    category
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "input": {
+    "namaProduk": "test",
+    "harga": 1000,
+    "stok": 1,
+    "berat": 1,
 
+  }
+}
+```
+- DecreaseStock
+```GraphQL
+mutation DecreaseStock($productId: ID!, $quantity: Int!) {
+  decreaseStock(productId: $productId, quantity: $quantity)
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "productId": "4",
+  "quantity": 1
+}
 ```
 ### 3. Order Service
 #### Query
@@ -565,22 +647,33 @@ Contoh isi JSON:
 }
 ```
 #### Mutation
-- createOrder
+- CreateOrder
 ```GraphQL
-mutation createOrder {
-  createOrder(input: {
-    productId: "1",      
-    quantity: 1,
-    alamatPengiriman: "Jl. Merdeka No 1",
-    kotaTujuanId: "2",    
-    metodePengiriman: "REGULER"
-  }) {
+mutation CreateOrder($input: CreateOrderInput!) {
+  createOrder(input: $input) {
     id
-    status          
-    paymentStatus   
-    totalHarga      
-    nomorVA         
-    nomorResi     
+    productId
+    quantity
+    totalHarga
+    status
+    paymentStatus
+    alamatPengiriman
+    metodePengiriman
+    ongkir
+    nomorVA
+    nomorResi
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "input": {
+    "alamatPengiriman": "Test",
+    "kotaTujuanId": "2",
+    "metodePengiriman": "REGULER",
+    "productId": "1",
+    "quantity": 1
   }
 }
 ```
@@ -627,3 +720,4 @@ Contoh isi JSON:
 ```JSON
 
 ```
+
