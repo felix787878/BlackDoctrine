@@ -692,18 +692,103 @@ Contoh isi JSON:
 ```
 ### 4. Review Service
 #### Query
-- 
+- GetReview
 ```GraphQL
-
-```
-#### Mutation
-- 
-```GraphQL
-
+query GetReview($getReviewId: ID!) {
+  getReview(id: $getReviewId) {
+    id
+    productId
+    userId
+    rating
+    comment
+    createdAt
+  }
+}
 ```
 Contoh isi JSON:
 ```JSON
-
+{
+  "getReviewId": "1", // ID disesuaikan
+}
+```
+- GetReviews
+```GraphQL
+query GetReviews($productId: ID!) {
+  getReviews(productId: $productId) {
+    id
+    productId
+    userId
+    rating
+    comment
+    createdAt
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "productId": "1",
+}
+```
+#### Mutation
+- CreateReview
+```GraphQL
+mutation CreateReview($input: CreateReviewInput!) {
+  createReview(input: $input) {
+    id
+    productId
+    userId
+    rating
+    comment
+    createdAt
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "input": {
+    "comment": "Test",
+    "productId": "1",
+    "rating": 5,
+    "userId": "2"
+  }
+}
+```
+- DeleteReview
+```GraphQL
+mutation DeleteReview($deleteReviewId: ID!) {
+  deleteReview(id: $deleteReviewId)
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "deleteReviewId": "5" // ID disesuaikan
+}
+```
+- UpdateReview
+```GraphQL
+mutation UpdateReview($updateReviewId: ID!, $input: UpdateReviewInput!) {
+  updateReview(id: $updateReviewId, input: $input) {
+    id
+    productId
+    userId
+    rating
+    comment
+    createdAt
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "updateReviewId": "4", // ID disesuaikan
+  "input": {
+    "comment": "Test",
+    "rating": 5
+  },
+}
 ```
 ### 5. Notification Service
 #### Query
@@ -720,4 +805,5 @@ Contoh isi JSON:
 ```JSON
 
 ```
+
 
