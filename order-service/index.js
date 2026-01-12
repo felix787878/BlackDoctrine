@@ -244,8 +244,9 @@ const resolvers = {
         // 1. Cek Stok Produk
         const product = await fetchProduct(input.productId);
         if (product.stok < input.quantity) throw new Error("Stok habis");
-        
-        const totalBerat = product.berat * input.quantity;
+        const beratGram = product.berat * input.quantity;
+        const totalBerat = Math.max(1, beratGram / 1000); 
+
         const totalHargaBarang = product.harga * input.quantity;
 
         // 2. Cek Ongkir ke GoShip (LOGISTIK)
