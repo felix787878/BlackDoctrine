@@ -11,14 +11,16 @@ cd TUGAS_BESAR_INTEGRASI
 ```
 ### 2. Clone Repository
 Clone ketiga repository kelompok Integrasi (**BlackDoctrine**, **TLKMSEL**, dan **Kata mamah harus dapat A**) ke dalam folder tersebut
+#### 1. Clone Repository BlackDoctrine (Black Market)
 ```Bash
-# 1. Clone Repository BlackDoctrine (Black Market)
 git clone https://github.com/felix787878/BlackDoctrine.git
-
-# 2. Clone Repository TLKMSEL (Dompet Digital Sawit)
+```
+#### 2. Clone Repository TLKMSEL (Dompet Digital Sawit)
+```Bash
 git clone https://github.com/AAkmalAmran/Project-UAS-IAE_Dompet-Digital-Sawit.git
-
-# 3. Clone Repository Kata mamah harus dapat A (Goship)
+```
+#### 3. Clone Repository Kata mamah harus dapat A (Goship)
+```Bash
 git clone https://github.com/TopasAkbar/GoShip.git
 ```
 ### Struktur direktori yang diharapkan:
@@ -40,15 +42,14 @@ git clone https://github.com/TopasAkbar/GoShip.git
 ## Menjalankan Service
 
 ### 1. Setup BlackDoctrine (Marketplace)
+Buka terminal baru, masuk ke folder proyek, dan jalankan script setup:
 ```Bash
-cd BlackDoctrine
 docker-compose up --build
 ```
 ### 2. Setup TLKMSEL (Dompet Digital)
 #### a. Persiapan Environment
 Buka terminal baru, masuk ke folder proyek, dan jalankan script setup:
 ```Bash
-cd Project-UAS-IAE_Dompet-Digital-Sawit
 python gsetup_env.py
 ```
 #### b. Generate RSA Keys
@@ -69,13 +70,28 @@ docker-compose up --build
 ### 4. Setup Kata mamah harus dapat A (Goship)
 Buka terminal baru, masuk ke folder proyek, dan jalankan script setup:
 ```Bash
-cd GoShip
 docker-compose up --build
 ```
 
 ## Simulasi Integrasi
 Berikut adalah skenario pengujian alur transaksi dari Checkout di Marketplace hingga Pembayaran di Dompet Digital.
-### 1. Checkout (Marketplace)
+### 1. Cek Ongkos Kirim (Marketplace)
+- Akses: http://localhost:7003/ lalu klik "**Query your server**" untuk mengakses Studio Appolo GraphQL dan melakukan tes query GraphQL
+- Aksi: Jalankan query berikut untuk mengecek metode pengiriman yang tersedia beserta harganya 
+```GraphQL
+query CekOngkirMarketplace {
+  getShippingOptions(
+    productId: "1",       # Sistem akan cek berat produk ini ke Product Service
+    quantity: 1,          # Misal beli 2 barang (Berat otomatis dikali 2)
+    kotaTujuanId: "2"     # ID Kota Tujuan (Bandung)
+  ) {
+    metodePengiriman
+    hargaOngkir
+    estimasiHari
+  }
+}
+```
+### 2. Checkout (Marketplace)
 - Akses: http://localhost:7003/ lalu klik "**Query your server**" untuk mengakses Studio Appolo GraphQL dan melakukan tes query GraphQL
 - Aksi: Jalankan mutation berikut untuk membuat pesanan
 ```GraphQL
@@ -96,7 +112,7 @@ mutation Checkout {
   }
 }
 ```
-### 2. Autentikasi (Dompet Digital)
+### 3. Autentikasi (Dompet Digital)
 - Akses: Buka tab baru di http://localhost:8000/graphql
 - Aksi: Lakukan Register dan Login
 #### a. Register User
@@ -122,8 +138,11 @@ mutation {
   }
 }
 ```
->PENTING: Copy access_token dari respon Login. Masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL: `{"Authorization" : "Bearer <TOKEN_ANDA>"}`
-### 3. Manajemen Wallet
+>**PENTING:** Copy `access_token` dari respon Login lalu masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL:
+>```Bash
+>{"Authorization" : "Bearer <TOKEN_ANDA>"}
+>```
+### 4. Manajemen Wallet
 Pastikan Header Authorization masih terpasang. Buat dompet baru untuk user tersebut
 - Akses: http://localhost:8000/graphql
 - Aksi: Membuat dompet baru
@@ -137,8 +156,12 @@ mutation {
   }
 }
 ```
->PENTING: Copy walletId yang muncul pada respon untuk digunakan saat transaksi.
-### 4. Pembayaran (Payment)
+>**PENTING:** Pastikan sudah melakukan Copy `access_token` dari respon Login lalu masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL:
+>```Bash
+>{"Authorization" : "Bearer <TOKEN_ANDA>"}
+>```
+>**PENTING**: Copy `walletId` yang muncul pada respon untuk digunakan saat transaksi.
+### 5. Pembayaran (Payment)
 Lakukan Top Up saldo terlebih dahulu, kemudian bayar tagihan dari Marketplace
 - Akses: http://localhost:8000/graphql
 - Aksi: Mengisi saldo dan bayar tagihan
@@ -147,7 +170,7 @@ Lakukan Top Up saldo terlebih dahulu, kemudian bayar tagihan dari Marketplace
 mutation {
   createTransaction(input: {
     walletId: "PASTE_WALLET_ID_DISINI",
-    amount: 500000,  # Sesuaikan agar cukup membayar totalHarga
+    amount: 16368000,  # Sesuaikan agar cukup membayar totalHarga
     type: DEPOSIT
   }) {
     transactionId
@@ -163,7 +186,7 @@ Sistem akan menghubungi Marketplace eksternal untuk validasi VA Number.
 mutation {
   createTransaction(input: {
     walletId: "PASTE_WALLET_ID_DISINI",
-    amount: 150000,             # Masukkan nilai totalHarga dari step Checkout
+    amount: 16368000,             # Masukkan nilai totalHarga dari step Checkout
     type: PAYMENT,
     vaNumber: "VA_MARKETPLACE"  # Masukkan nomorVA dari step Checkout
   }) {
@@ -173,9 +196,14 @@ mutation {
   }
 }
 ```
-### 5. Check Perubahan Pada Order Setelah Pembayaran (Marketplace)
+>**PENTING:** Pastikan sudah melakukan Copy `access_token` dari respon Login lalu masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL:
+>```Bash
+>{"Authorization" : "Bearer <TOKEN_ANDA>"}
+>```
+### 6. Cek Perubahan Pada Order Setelah Pembayaran (Marketplace)
 - Akses: http://localhost:7003/ lalu klik "**Query your server**" untuk mengakses Studio Appolo GraphQL dan melakukan tes query GraphQL
-- Aksi: Jalankan query berikut melihat semua pesanan/order
+- Aksi: Jalankan salah satu query berikut untuk melihat semua pesanan/order atau melihat satu order pilihan menggunakan ID
+#### a. Lihat Semua Order
 ```GraphQL
 query LihatSemuaOrder {
   getOrders {
@@ -191,6 +219,21 @@ query LihatSemuaOrder {
   }
 }
 ```
-
-
-
+#### b. Lihat Salah Satu Order (Menggunakan VA)
+```GraphQL
+query LihatSatuOrder($vaNumber: String!) {
+  getOrderByVA(vaNumber: $vaNumber) {
+    id
+    productId
+    quantity
+    totalHarga
+    status
+    paymentStatus
+    alamatPengiriman
+    metodePengiriman
+    ongkir
+    nomorVA
+    nomorResi
+  }
+}
+```
