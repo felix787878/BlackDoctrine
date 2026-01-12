@@ -794,16 +794,57 @@ Contoh isi JSON:
 #### Query
 - 
 ```GraphQL
-
-```
-#### Mutation
-- 
-```GraphQL
-
+query GetUserNotifications($userId: Int!) {
+  getUserNotifications(userId: $userId) {
+    id
+    userId
+    message
+    type
+    isRead
+    createdAt
+  }
+}
 ```
 Contoh isi JSON:
 ```JSON
-
+{
+  "userId": 2, // ID disesuaikan
+}
 ```
+#### Mutation
+- SendNotification
+```GraphQL
+mutation SendNotification($userId: Int!, $message: String!, $type: String) {
+  sendNotification(userId: $userId, message: $message, type: $type) {
+    id
+    userId
+    message
+    type
+    isRead
+    createdAt
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "userId": 2, // ID disesuaikan
+  "message": "test",
+  "type": "test",
+}
+```
+- MarkAsRead
+```GraphQL
+mutation MarkAsRead($markAsReadId: ID!) {
+  markAsRead(id: $markAsReadId)
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "markAsReadId": "3", // ID disesuaikan
+}
+```
+
 
 
