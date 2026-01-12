@@ -500,25 +500,101 @@ Contoh isi JSON:
 ```
 Contoh isi JSON:
 ```JSON
-{
 
-}
 ```
 ### 3. Order Service
 #### Query
-- 
+- GetOrders
 ```GraphQL
-
+query GetOrders {
+  getOrders {
+    id
+    productId
+    quantity
+    totalHarga
+    status
+    paymentStatus
+    alamatPengiriman
+    metodePengiriman
+    ongkir
+    nomorVA
+    nomorResi
+  }
+}
 ```
-#### Mutation
-- 
+- GetOrderByVA
 ```GraphQL
-
+query GetOrderByVA($vaNumber: String!) {
+  getOrderByVA(vaNumber: $vaNumber) {
+    id
+    productId
+    quantity
+    totalHarga
+    status
+    paymentStatus
+    alamatPengiriman
+    metodePengiriman
+    ongkir
+    nomorVA
+    nomorResi
+  }
+}
 ```
 Contoh isi JSON:
 ```JSON
 {
-
+  "vaNumber": "BM-1767718314368" // Nomor VA disesuaikan dengan nomor VA yang dimiliki
+}
+```
+- GetShippingOptions
+```GraphQL
+query GetShippingOptions($kotaTujuanId: String!, $productId: String!, $quantity: Int!) {
+  getShippingOptions(kotaTujuanId: $kotaTujuanId, productId: $productId, quantity: $quantity) {
+    metodePengiriman
+    hargaOngkir
+    estimasiHari
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "kotaTujuanId": "2",
+  "productId": "1",
+  "quantity": 2
+}
+```
+#### Mutation
+- createOrder
+```GraphQL
+mutation createOrder {
+  createOrder(input: {
+    productId: "1",      
+    quantity: 1,
+    alamatPengiriman: "Jl. Merdeka No 1",
+    kotaTujuanId: "2",    
+    metodePengiriman: "REGULER"
+  }) {
+    id
+    status          
+    paymentStatus   
+    totalHarga      
+    nomorVA         
+    nomorResi     
+  }
+}
+```
+- UpdatePaymentStatus
+```GraphQL
+mutation UpdatePaymentStatus($vaNumber: String!, $status: String!) {
+  updatePaymentStatus(vaNumber: $vaNumber, status: $status)
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "vaNumber": "BM-1767718314368", // Nomor VA disesuaikan dengan nomor VA yang dimiliki
+  "status": "true"
 }
 ```
 ### 4. Review Service
@@ -534,9 +610,7 @@ Contoh isi JSON:
 ```
 Contoh isi JSON:
 ```JSON
-{
 
-}
 ```
 ### 5. Notification Service
 #### Query
@@ -551,7 +625,5 @@ Contoh isi JSON:
 ```
 Contoh isi JSON:
 ```JSON
-{
 
-}
 ```
