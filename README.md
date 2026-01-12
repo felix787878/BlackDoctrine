@@ -236,5 +236,322 @@ query LihatSatuOrder($vaNumber: String!) {
   }
 }
 ```
+## GraphQL Service
+### 1. User Service 
+#### Query
+- Lihat User Profile
+```GraphQL
+query GetUserProfile($userId: ID!) {
+  getUserProfile(userId: $userId) {
+    id
+    nama
+    email
+    role
+    profile {
+      user_id
+      full_name
+      phone_number
+      avatarUrl
+    }
+  }
+}
+```
+- Me
+```GraphQL
+query Me {
+  me {
+    id
+    nama
+    email
+    role
+    isActive
+    deletedAt
+    statusLabel
+    avatarUrl
+  }
+}
+```
+- MyAddresses
+```GraphQL
+query MyAddresses {
+  myAddresses {
+    id
+    user_id
+    label
+    recipient_name
+    recipient_phone
+    street
+    city
+    province
+    is_primary
+  }
+}
+```
+#### Mutation
+- Register
+```GraphQL
+mutation Register($nama: String!, $email: String!, $password: String!) {
+  register(nama: $nama, email: $email, password: $password) {
+    id
+    nama
+    email
+    role
+    isActive
+    deletedAt
+    statusLabel
+    avatarUrl
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "nama": "test",
+  "email": "test@email.com",
+  "password": "test"
+}
+```
+- Login
+```GraphQL
+mutation Login($email: String!, $password: String!) {
+  login(email: $email, password: $password) {
+    token
+    user {
+      id
+      nama
+      email
+      role
+      isActive
+      deletedAt
+      statusLabel
+      avatarUrl
+    }
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "email": "test@email.com",
+  "password": "test"
+}
+```
+- AddAddress
+```GraphQL
+mutation AddAddress($label: String!, $recipientName: String!, $street: String!, $city: String!, $province: String!, $recipientPhone: String) {
+  addAddress(label: $label, recipientName: $recipientName, street: $street, city: $city, province: $province, recipientPhone: $recipientPhone) {
+    id
+    user_id
+    label
+    recipient_name
+    recipient_phone
+    street
+    city
+    province
+    is_primary
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "label": "Rumah",
+  "recipientName": "Test",
+  "street": "Test",
+  "city": "Test",
+  "province": "Test",
+  "recipientPhone": "12345"
+}
+```
+- SetPrimaryAddress
+```GraphQL
+mutation SetPrimaryAddress($setPrimaryAddressId: ID!) {
+  setPrimaryAddress(id: $setPrimaryAddressId) {
+    id
+    user_id
+    label
+    recipient_name
+    recipient_phone
+    street
+    city
+    province
+    is_primary
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "setPrimaryAddressId": "2"
+}
+```
+- SetPrimaryAddress
+```GraphQL
+mutation SetPrimaryAddress($updateAddressId: ID!, $label: String!, $recipientName: String!, $street: String!, $city: String!, $province: String!) {
+  updateAddress(id: $updateAddressId, label: $label, recipientName: $recipientName, street: $street, city: $city, province: $province) {
+    id
+    user_id
+    label
+    recipient_name
+    recipient_phone
+    street
+    city
+    province
+    is_primary
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "updateAddressId": "2",
+  "label": "Kost",
+  "recipientName": "Alta",
+  "street": "Alta",
+  "city": "Bandung",
+  "province": "Jawa Barat"
+}
+```
+- DeleteAddress
+```GraphQL
+mutation DeleteAddress($deleteAddressId: ID!) {
+  deleteAddress(id: $deleteAddressId)
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "deleteAddressId": "2"
+}
+```
+- UpdateProfile
+```GraphQL
+mutation UpdateProfile($nama: String, $email: String, $phoneNumber: String) {
+  updateProfile(nama: $nama, email: $email, phoneNumber: $phoneNumber) {
+    id
+    nama
+    email
+    role
+    isActive
+    deletedAt
+    statusLabel
+    avatarUrl
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "nama": "Alta",
+  "email": "Alta@test.com",
+  "phoneNumber": "08123456789"
+}
+```
+- ChangePassword
+```GraphQL
+mutation ChangePassword($oldPass: String!, $newPass: String!) {
+  changePassword(oldPass: $oldPass, newPass: $newPass)
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "oldPass": "test",
+  "newPass": "alta"
+}
+```
+- softDeleteAccount
+```GraphQL
+mutation softDeleteAccount {
+  softDeleteAccount
+}
+```
+- AdminRestoreUser
+```GraphQL
+mutation AdminRestoreUser($userId: ID!) {
+  adminRestoreUser(userId: $userId) {
+    id
+    nama
+    email
+    role
+    isActive
+    deletedAt
+    statusLabel
+    avatarUrl
+  }
+}
+```
+Contoh isi JSON:
+```JSON
+{
+  "userId": "2"
+}
+```
+### 2. Product Service
+#### Query
+- 
+```GraphQL
 
+```
+#### Mutation
+- 
+```GraphQL
 
+```
+Contoh isi JSON:
+```JSON
+{
+
+}
+```
+### 3. Order Service
+#### Query
+- 
+```GraphQL
+
+```
+#### Mutation
+- 
+```GraphQL
+
+```
+Contoh isi JSON:
+```JSON
+{
+
+}
+```
+### 4. Review Service
+#### Query
+- 
+```GraphQL
+
+```
+#### Mutation
+- 
+```GraphQL
+
+```
+Contoh isi JSON:
+```JSON
+{
+
+}
+```
+### 5. Notification Service
+#### Query
+- 
+```GraphQL
+
+```
+#### Mutation
+- 
+```GraphQL
+
+```
+Contoh isi JSON:
+```JSON
+{
+
+}
+```
