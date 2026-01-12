@@ -156,8 +156,7 @@ mutation {
   }
 }
 ```
->**PENTING**: Copy `walletId` yang muncul pada respon untuk digunakan saat transaksi.
->**PENTING:** Pastikan sudah melakukan Copy `access_token` dari respon Login lalu masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL:
+>**PENTING**: Copy `walletId` yang muncul pada respon untuk digunakan saat transaksi. Dan Pastikan sudah melakukan Copy `access_token` dari respon Login lalu masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL:
 >```Bash
 >{"Authorization" : "Bearer <TOKEN_ANDA>"}
 >```
@@ -237,4 +236,5 @@ query LihatSatuOrder($vaNumber: String!) {
   }
 }
 ```
+
 
