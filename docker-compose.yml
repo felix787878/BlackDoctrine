@@ -101,4 +101,4 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      - VITE_GRAPHQL_URL=http://host.docker.internal:7001/graphql
+      - VITE_GRAPHQL_URL=http://localhost:7001/graphql
