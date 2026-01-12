@@ -31,12 +31,12 @@ git clone https://github.com/TopasAkbar/GoShip.git
 │     ├── docker-compose.yml
 │     └── src
 │
-├── /Project-UAS-IAE_Dompet-Digital-Sawit
+├── /GoShip
 │     ├── docker-compose.yml
-│     └── src
+│     └── src      
 │
-└── /GoShip
-      ├── docker-compose.yml
+└── /Project-UAS-IAE_Dompet-Digital-Sawit
+      ├── docker-compose.yml 
       └── src
 ```
 ## Menjalankan Service
@@ -156,11 +156,11 @@ mutation {
   }
 }
 ```
+>**PENTING**: Copy `walletId` yang muncul pada respon untuk digunakan saat transaksi.
 >**PENTING:** Pastikan sudah melakukan Copy `access_token` dari respon Login lalu masukkan ke bagian **HTTP HEADERS** di bagian bawah playground GraphQL:
 >```Bash
 >{"Authorization" : "Bearer <TOKEN_ANDA>"}
 >```
->**PENTING**: Copy `walletId` yang muncul pada respon untuk digunakan saat transaksi.
 ### 5. Pembayaran (Payment)
 Lakukan Top Up saldo terlebih dahulu, kemudian bayar tagihan dari Marketplace
 - Akses: http://localhost:8000/graphql
@@ -237,3 +237,4 @@ query LihatSatuOrder($vaNumber: String!) {
   }
 }
 ```
+
