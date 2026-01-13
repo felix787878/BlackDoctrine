@@ -731,33 +731,40 @@ const server = new ApolloServer({
     credentials: true,
   },
   context: ({ req }) => {
-    // Get the Authorization header
-    const authHeader = req.headers.authorization || '';
+    const authHeader = req.headers.authorization || 
+                      req.headers.Authorization || 
+                      req.headers['authorization'] || 
+                      req.headers['Authorization'] || 
+                      '';
 
-    // Check if it starts with Bearer
-    if (authHeader.startsWith('Bearer ')) {
-      const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-      try {
-        // Verify the JWT token
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'pasaribu');
-
-        // Return user info in context (basic info from JWT)
-        return {
-          user: {
-            id: String(decoded.userId),
-            email: decoded.email,
-            role: decoded.role,
-          },
-        };
-      } catch (error) {
-        // Token is invalid, return empty context
-        return {};
-      }
+    if (!authHeader) {
+      return {};
     }
 
-    // No token provided
-    return {};
+    let token = authHeader.trim();
+    
+    if (token.toLowerCase().startsWith('bearer ')) {
+      token = token.substring(7).trim();
+    }
+
+    if (!token) {
+      return {};
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'pasaribu');
+
+      return {
+        user: {
+          id: String(decoded.userId),
+          email: decoded.email,
+          role: decoded.role,
+        },
+      };
+    } catch (error) {
+      console.error('JWT verification failed:', error.message);
+      return {};
+    }
   },
 });
 
