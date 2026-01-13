@@ -231,7 +231,8 @@ const resolvers = {
 
     getShippingOptions: async (_, { kotaTujuanId, productId, quantity }) => {
       const product = await fetchProduct(productId);
-      const totalBerat = product.berat * quantity;
+      const beratGram = product.berat * quantity;
+      const totalBerat = Math.max(1, beratGram / 1000); 
       return await fetchGoShipOptions(kotaTujuanId, totalBerat);
     }
   },
